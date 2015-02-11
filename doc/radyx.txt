@@ -25,7 +25,7 @@ The following switches are recognized:
 --
    Stop switch parsing (allows archive names starting with '-')
 
--ar
+-ar=<on|off>
    Asynchronous reading of input files. Allows compression to occur while
    reading data. This increases the memory requirement by one dictionary size.
 
