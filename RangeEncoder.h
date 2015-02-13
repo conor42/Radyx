@@ -32,7 +32,7 @@ namespace Radyx {
 class RangeEncoder
 {
 public:
-	typedef uint16_t Probability;
+	typedef uint_least16_t Probability;
 	static const unsigned kNumTopBits = 24;
 	static const uint_fast32_t kTopValue = (UINT32_C(1) << kNumTopBits);
 	static const unsigned kNumBitModelTotalBits = 11;

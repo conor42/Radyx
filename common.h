@@ -25,7 +25,7 @@
 #define RADYX_COMMON_H_
 
 #include <cstddef>
-#include <inttypes.h>
+#include <cinttypes>
 #include <thread>
 #include <cassert>
 
@@ -36,6 +36,12 @@
 extern volatile bool g_break;
 
 namespace Radyx {
+
+#ifdef USE_64BIT_FAST_INT
+typedef uint_fast64_t UintFast32;
+#else
+typedef uint_least32_t UintFast32;
+#endif
 
 #if defined(RADYX_STATS) && defined(InterlockedAdd64)
 

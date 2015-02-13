@@ -55,7 +55,7 @@ private:
 
 	uint_least64_t total_bytes;
 	std::atomic_uint_fast64_t progress_bytes;
-	uint_least64_t next_update;
+	volatile uint_least64_t next_update;
 	std::mutex mtx;
 	unsigned build_weight;
 	unsigned encode_weight;

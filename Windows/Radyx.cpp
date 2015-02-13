@@ -133,7 +133,8 @@ int _tmain(int argc, _TCHAR* argv[])
 #ifdef _WIN32
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 #else
-		nice(1);
+		if(nice(1) < 0) {
+		}
 #endif
 		uint_least64_t packed = ar_comp.Compress(unit_comp, *compressor, options, threads, out_stream);
 		if (ar_comp.GetFileList().size() != 0 && !g_break) {

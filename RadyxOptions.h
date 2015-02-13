@@ -53,6 +53,7 @@ public:
 	{
 		Path path;
 		size_t root;
+		size_t name;
 		bool recurse;
 		FileSpec() {}
 		FileSpec(const _TCHAR* path_, Recurse recurse_);

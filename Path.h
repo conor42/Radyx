@@ -61,6 +61,7 @@ public:
 	FsString GetName() const;
 	void ConvertSeparators();
 	inline size_t GetNamePos() const;
+	bool IsPureRelativePath() const;
 	inline bool IsExtendedLength() const;
 	inline bool IsDevNull() const;
 	static bool MatchFileSpec(const _TCHAR* name, const _TCHAR* spec);

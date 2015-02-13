@@ -47,17 +47,17 @@ public:
 		MatchResult match,
 		MatchCollection& matches);
 private:
-	static const uint_fast32_t kHashMask2 = (1 << kTableBits2) - 1;
-	static const uint_fast32_t kHashMask3 = (1 << kTableBits3) - 1;
+	static const UintFast32 kHashMask2 = (1 << kTableBits2) - 1;
+	static const UintFast32 kHashMask3 = (1 << kTableBits3) - 1;
 	static const ptrdiff_t kChainMask2 = kHashMask2;
-	static const uint_fast32_t kNullLink = UINT32_MAX;
+	static const UintFast32 kNullLink = UINT32_MAX;
 
-	std::unique_ptr<uint_fast32_t[]> hash_chain_3;
+	std::unique_ptr<UintFast32[]> hash_chain_3;
 	ptrdiff_t chain_mask_3;
 	ptrdiff_t prev_index;
-	std::array<uint_fast32_t, 1 << kTableBits2> table_2;
-	std::array<uint_fast32_t, 1 << kTableBits2> hash_chain_2;
-	std::array<uint_fast32_t, 1 << kTableBits3> table_3;
+	std::array<UintFast32, 1 << kTableBits2> table_2;
+	std::array<UintFast32, 1 << kTableBits2> hash_chain_2;
+	std::array<UintFast32, 1 << kTableBits3> table_3;
 
 	HashChain(const HashChain&) = delete;
 	HashChain& operator=(const HashChain&) = delete;
@@ -65,7 +65,7 @@ private:
 
 template<unsigned kTableBits2, unsigned kTableBits3, size_t kMatchLenMax>
 HashChain<kTableBits2, kTableBits3, kMatchLenMax>::HashChain(unsigned dictionary_bits_3)
-	: hash_chain_3(new uint_fast32_t[size_t(1) << dictionary_bits_3]),
+	: hash_chain_3(new UintFast32[size_t(1) << dictionary_bits_3]),
 	chain_mask_3((1 << dictionary_bits_3) - 1)
 {
 	Initialize(-1);
@@ -76,7 +76,7 @@ inline void HashChain<kTableBits2, kTableBits3, kMatchLenMax>::Initialize(ptrdif
 {
 	prev_index = prev_index_;
 	// GCC is strict about passing a reference to fill()
-	uint_fast32_t n = kNullLink;
+	UintFast32 n = kNullLink;
 	table_2.fill(n);
 	table_3.fill(n);
 }
@@ -114,10 +114,10 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 	while (++prev_index < index) {
 		size_t hash = GetHash2(data + prev_index, kTableBits2);
 		hash_chain_2[prev_index & kChainMask2] = table_2[hash & kHashMask2];
-		table_2[hash & kHashMask2] = static_cast<uint_fast32_t>(prev_index);
+		table_2[hash & kHashMask2] = static_cast<UintFast32>(prev_index);
 		hash = GetHash3(data + prev_index, hash, kTableBits3) & kHashMask3;
 		hash_chain_3[prev_index & chain_mask_3] = table_3[hash];
-		table_3[hash] = static_cast<uint_fast32_t>(prev_index);
+		table_3[hash] = static_cast<UintFast32>(prev_index);
 	}
 	data += index;
 	ptrdiff_t end_index = index - match.dist;
@@ -130,8 +130,8 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 	}
 	size_t max_len = 0;
 	size_t hash = GetHash2(data, kTableBits2);
-	uint_fast32_t first_match = table_2[hash & kHashMask2];
-	table_2[hash & kHashMask2] = static_cast<uint_fast32_t>(index);
+	UintFast32 first_match = table_2[hash & kHashMask2];
+	table_2[hash & kHashMask2] = static_cast<UintFast32>(index);
 	size_t match_2 = first_match;
 	unsigned end_length = match.length;
 	for (; match_2 >= end && cycles > 0; match_2 = hash_chain_2[match_2 & kChainMask2]) {
@@ -149,7 +149,7 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 		for (; max_len < limit && data[max_len] == data_2[max_len]; ++max_len) {
 		}
 		matches.push_back(MatchResult(static_cast<unsigned>(max_len),
-			static_cast<uint_fast32_t>(index - match_2 - 1)));
+			static_cast<UintFast32>(index - match_2 - 1)));
 		// Prevent this position being tested again
 		--match_2;
 		break;
@@ -157,7 +157,7 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 	hash_chain_2[index & kChainMask2] = first_match;
 	hash = GetHash3(data, hash, kTableBits3) & kHashMask3;
 	first_match = table_3[hash];
-	table_3[hash] = static_cast<uint_fast32_t>(index);
+	table_3[hash] = static_cast<UintFast32>(index);
 	--end_length;
 	if (max_len < end_length) {
 		end = std::max(end_index, index - chain_mask_3 - 1);
@@ -177,7 +177,7 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 			}
 			if (len_test > max_len) {
 				matches.push_back(MatchResult(static_cast<unsigned>(len_test),
-					static_cast<uint_fast32_t>(index - match_3 - 1)));
+					static_cast<UintFast32>(index - match_3 - 1)));
 				max_len = len_test;
 				if (len_test >= end_length) {
 					break;

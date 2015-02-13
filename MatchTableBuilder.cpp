@@ -34,14 +34,14 @@ void MatchTableBuilder::AllocateMatchBuffer(const DataBlock& block, size_t match
 	}
 }
 
-uint_fast32_t MatchTableBuilder::RepeatCheck(StringMatch* match_buffer,
+UintFast32 MatchTableBuilder::RepeatCheck(StringMatch* match_buffer,
 	size_t index,
-	uint_fast32_t depth,
-	uint_fast32_t list_count)
+	UintFast32 depth,
+	UintFast32 list_count)
 {
 	int_fast32_t n = list_count - 1;
 	int_fast32_t rpt = -1;
-	size_t rpt_tail;
+	size_t rpt_tail = index;
 	do {
 		size_t next_i = match_buffer[index].next;
 		if (match_buffer[index].from - match_buffer[next_i].from <= depth) {
@@ -50,7 +50,7 @@ uint_fast32_t MatchTableBuilder::RepeatCheck(StringMatch* match_buffer,
 		}
 		else {
 			if (rpt > kMaxOverlappingRpt - 1) {
-				match_buffer[rpt_tail].next = static_cast<uint_fast32_t>(index);
+				match_buffer[rpt_tail].next = static_cast<UintFast32>(index);
 				list_count -= rpt;
 			}
 			rpt = -1;
@@ -58,7 +58,7 @@ uint_fast32_t MatchTableBuilder::RepeatCheck(StringMatch* match_buffer,
 		index = next_i;
 	} while (--n);
 	if (rpt > kMaxOverlappingRpt - 1) {
-		match_buffer[rpt_tail].next = static_cast<uint_fast32_t>(index);
+		match_buffer[rpt_tail].next = static_cast<UintFast32>(index);
 		list_count -= rpt;
 	}
 	return list_count;
@@ -116,7 +116,7 @@ void MatchTableBuilder::BruteForceBuffered(const DataBlock& block,
 		} while (++j < list_count);
 		if (longest > 0) {
 			index = buffer[i].index;
-			match_buffer[index].next = static_cast<uint_fast32_t>(buffer[longest_index].index);
+			match_buffer[index].next = static_cast<UintFast32>(buffer[longest_index].index);
 			match_buffer[index].length = static_cast<uint8_t>(depth)+static_cast<uint8_t>(longest);
 		}
 		++i;

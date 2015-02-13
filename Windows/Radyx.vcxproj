@@ -152,9 +152,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\ArchiveCompressor.h" />
     <ClInclude Include="..\AsyncWriter.h" />
     <ClInclude Include="..\BcjTransform.h" />
@@ -170,6 +167,7 @@
     <ClInclude Include="..\DirScanner.h" />
     <ClInclude Include="..\ErrorCode.h" />
     <ClInclude Include="..\FlagTable.h" />
+    <ClInclude Include="..\HashChain.h" />
     <ClInclude Include="..\IoException.h" />
     <ClInclude Include="..\Lzma2Compressor.h" />
     <ClInclude Include="..\Lzma2Encoder.h" />

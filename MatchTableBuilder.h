@@ -39,13 +39,13 @@ namespace Radyx {
 class MatchTableBuilder
 {
 public:
-	static const uint_fast32_t kNullLink = UINT32_MAX;
+	static const UintFast32 kNullLink = UINT32_MAX;
 	static const unsigned kRptCheckBits = 5;
 	static const unsigned kRptCheckMask = (1 << kRptCheckBits) - 1;
 
 	struct ListHead {
-		uint_fast32_t head;
-		uint_fast32_t count;
+		UintFast32 head;
+		UintFast32 count;
 		ListHead() {}
 	};
 
@@ -80,25 +80,25 @@ public:
 private:
 	static const unsigned kRadixBitsLarge = 16;
 	static const unsigned kRadixBitsSmall = 8;
-	static const uint_fast32_t kRadixTableSizeLarge = 1 << kRadixBitsLarge;
-	static const uint_fast32_t kRadixTableSizeSmall = 1 << kRadixBitsSmall;
-	static const uint_fast32_t kStackSize = kRadixTableSizeLarge * 3;
+	static const size_t kRadixTableSizeLarge = 1 << kRadixBitsLarge;
+	static const size_t kRadixTableSizeSmall = 1 << kRadixBitsSmall;
+	static const size_t kStackSize = kRadixTableSizeLarge * 3;
 	static const int kMaxOverlappingRpt = 7;
 	static const unsigned kMinBufferedListSize = 30;
 	static const unsigned kMaxBruteForceListSize = 6;
 
 	struct ListTail
 	{
-		uint_fast32_t prev_index;
-		uint_fast32_t list_count;
+		UintFast32 prev_index;
+		UintFast32 list_count;
 	};
 	struct StringMatch
 	{
-		uint_fast32_t from;
+		UintFast32 from;
 		uint8_t pad;
 		uint8_t length;
 		uint8_t chars[2];
-		uint_fast32_t next;
+		UintFast32 next;
 		StringMatch() {}
 	};
 	struct BruteForceMatch
@@ -115,34 +115,34 @@ private:
 		size_t link,
 		uint8_t depth,
 		uint8_t max_depth,
-		uint_fast32_t list_count,
+		UintFast32 list_count,
 		size_t stack_base);
 	template<class MatchTableT>
 	void RecurseLists8(const DataBlock& block,
 		MatchTableT& match_table,
 		size_t link,
-		uint_fast32_t count,
-		uint_fast32_t max_depth);
+		UintFast32 count,
+		UintFast32 max_depth);
 	template<class MatchTableT>
 	void RecurseLists16(const DataBlock& block,
 		MatchTableT& match_table,
 		size_t link,
-		uint_fast32_t count,
-		uint_fast32_t max_depth);
+		UintFast32 count,
+		UintFast32 max_depth);
 	template<class MatchTableT>
 	void RecurseListStack(const DataBlock& block,
 		MatchTableT& match_table,
 		size_t st_index,
-		uint_fast32_t max_depth);
-	uint_fast32_t RepeatCheck(StringMatch* match_buffer,
+		UintFast32 max_depth);
+	UintFast32 RepeatCheck(StringMatch* match_buffer,
 		size_t index,
-		uint_fast32_t depth,
-		uint_fast32_t list_count);
+		UintFast32 depth,
+		UintFast32 list_count);
 	template<class MatchTableT>
-	uint_fast32_t RepeatCheck(MatchTableT& match_table,
+	UintFast32 RepeatCheck(MatchTableT& match_table,
 		size_t link,
-		uint_fast32_t depth,
-		uint_fast32_t list_count);
+		UintFast32 depth,
+		UintFast32 list_count);
 	void BruteForceBuffered(const DataBlock& block,
 		StringMatch* match_buffer,
 		size_t index,
@@ -154,12 +154,12 @@ private:
 		MatchTableT& match_table,
 		size_t link,
 		size_t list_count,
-		uint_fast32_t depth,
-		uint_fast32_t max_depth);
+		UintFast32 depth,
+		UintFast32 max_depth);
 
 	// Fast-reset bool tables for recording initial radix value occurrence
-	FlagTable<uint_fast32_t, 8> flag_table_8;
-	FlagTable<uint_fast32_t, 16> flag_table_16;
+	FlagTable<UintFast32, 8> flag_table_8;
+	FlagTable<UintFast32, 16> flag_table_16;
 	// Table to track the tails of new sub-lists
 	ListTail sub_tails[kRadixTableSizeLarge];
 	// Stack of new sub-list heads
@@ -192,16 +192,16 @@ MatchTableBuilder::HeadIndexes::HeadIndexes(ListHead* head_table, size_t table_s
 // Find an end point preceeded by a bunch of short lists
 size_t MatchTableBuilder::HeadIndexes::GetEndHeadIndex(ListHead* head_table, size_t end, size_t block_size, unsigned thread_count)
 {
-	uint_fast32_t max_count;
+	UintFast32 max_count;
 	if (end <= MatchTableBuilder::kRadixTableSizeSmall) {
-		max_count = static_cast<uint_fast32_t>((block_size << 4) / end);
+		max_count = static_cast<UintFast32>((block_size << 4) / end);
 	}
 	else {
-		max_count = static_cast<uint_fast32_t>((block_size << 7) / end);
+		max_count = static_cast<UintFast32>((block_size << 7) / end);
 	}
-	uint_fast32_t target_sum = (max_count * (thread_count - 1)) >> 3;
+	UintFast32 target_sum = (max_count * (thread_count - 1)) >> 3;
 	do {
-		uint_fast32_t sum = 0;
+		UintFast32 sum = 0;
 		size_t i = end;
 		for (; i > 1 && head_table[i - 1].count <= max_count; --i) {
 			sum += head_table[i - 1].count;
@@ -297,7 +297,7 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 	size_t link,
 	uint8_t depth,
 	uint8_t max_depth,
-	uint_fast32_t list_count,
+	UintFast32 list_count,
 	size_t stack_base)
 {
 	// Faster than vector operator[] and possible because the vector is not reallocated in this method
@@ -310,16 +310,16 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 		// Get 2 data characters for later. This doesn't block on a cache miss.
 		Copy2Bytes(match_buffer[count].chars, data_src + link);
 		// Record the actual location of this suffix
-		match_buffer[count].from = static_cast<uint_fast32_t>(link);
+		match_buffer[count].from = static_cast<UintFast32>(link);
 		// Next
 		link = match_table.GetMatchLink(link);
 		// Initialize the next link
-		match_buffer[count].next = static_cast<uint_fast32_t>(count + 1);
+		match_buffer[count].next = static_cast<UintFast32>(count + 1);
 		// Match length
 		match_buffer[count].length = depth;
 	}
 	// Make the last element circular so pre-loading doesn't read past the end.
-	match_buffer[count - 1].next = static_cast<uint_fast32_t>(count - 1);
+	match_buffer[count - 1].next = static_cast<UintFast32>(count - 1);
 	// Clear the bool flags
 	flag_table_8.Reset();
 	++depth;
@@ -338,15 +338,15 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 			++sub_tails[radix_8].list_count;
 			// Link the previous occurrence to this one and record the new length
 			match_buffer[prev].length = depth;
-			match_buffer[prev].next = static_cast<uint_fast32_t>(index);
+			match_buffer[prev].next = static_cast<UintFast32>(index);
 		}
 		else {
 			flag_table_8.Set(radix_8);
 			sub_tails[radix_8].list_count = 1;
 			// Add the new sub list to the stack
-			stack[st_index].head = static_cast<uint_fast32_t>(index);
+			stack[st_index].head = static_cast<UintFast32>(index);
 			// This will be converted to a count at the end
-			stack[st_index].count = static_cast<uint_fast32_t>(radix_8);
+			stack[st_index].count = static_cast<UintFast32>(radix_8);
 			++st_index;
 		}
 		prev_index_8[radix_8] = index;
@@ -360,7 +360,7 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 		const size_t prev = prev_index_8[radix_8];
 		++sub_tails[radix_8].list_count;
 		match_buffer[prev].length = depth;
-		match_buffer[prev].next = static_cast<uint_fast32_t>(index);
+		match_buffer[prev].next = static_cast<UintFast32>(index);
 	}
 	// Convert radix values on the stack to counts
 	for (size_t j = stack_base; j < st_index; ++j) {
@@ -423,13 +423,13 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 					const size_t prev = prev_index_8[radix_8];
 					++sub_tails[radix_8].list_count;
 					match_buffer[prev].length = depth;
-					match_buffer[prev].next = static_cast<uint_fast32_t>(index);
+					match_buffer[prev].next = static_cast<UintFast32>(index);
 				}
 				else {
 					flag_table_8.Set(radix_8);
 					sub_tails[radix_8].list_count = 1;
-					stack[st_index].head = static_cast<uint_fast32_t>(index);
-					stack[st_index].count = static_cast<uint_fast32_t>(radix_8);
+					stack[st_index].head = static_cast<UintFast32>(index);
+					stack[st_index].count = static_cast<UintFast32>(radix_8);
 					++st_index;
 				}
 				prev_index_8[radix_8] = index;
@@ -445,13 +445,13 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 					const size_t prev = prev_index_8[radix_8];
 					++sub_tails[radix_8].list_count;
 					match_buffer[prev].length = depth;
-					match_buffer[prev].next = static_cast<uint_fast32_t>(index);
+					match_buffer[prev].next = static_cast<UintFast32>(index);
 				}
 				else {
 					flag_table_8.Set(radix_8);
 					sub_tails[radix_8].list_count = 1;
-					stack[st_index].head = static_cast<uint_fast32_t>(index);
-					stack[st_index].count = static_cast<uint_fast32_t>(radix_8);
+					stack[st_index].head = static_cast<UintFast32>(index);
+					stack[st_index].count = static_cast<UintFast32>(radix_8);
 					++st_index;
 				}
 				prev_index_8[radix_8] = index;
@@ -464,7 +464,7 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 				const size_t prev = prev_index_8[radix_8];
 				++sub_tails[radix_8].list_count;
 				match_buffer[prev].length = depth;
-				match_buffer[prev].next = static_cast<uint_fast32_t>(index);
+				match_buffer[prev].next = static_cast<UintFast32>(index);
 			}
 			for (size_t j = prev_st_index; j < st_index; ++j) {
 				stack[j].count = sub_tails[stack[j].count].list_count;
@@ -481,7 +481,7 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 				if (flag_table_8.IsSet(radix_8)) {
 					const size_t prev = prev_index_8[radix_8];
 					match_buffer[prev].length = depth;
-					match_buffer[prev].next = static_cast<uint_fast32_t>(index);
+					match_buffer[prev].next = static_cast<UintFast32>(index);
 				}
 				else {
 					flag_table_8.Set(radix_8);
@@ -504,8 +504,8 @@ template<class MatchTableT>
 void MatchTableBuilder::RecurseLists8(const DataBlock& block,
 	MatchTableT& match_table,
 	size_t link,
-	uint_fast32_t count,
-	uint_fast32_t max_depth)
+	UintFast32 count,
+	UintFast32 max_depth)
 {
 	flag_table_8.Reset();
 	// Offset data pointer
@@ -526,25 +526,25 @@ void MatchTableBuilder::RecurseLists8(const DataBlock& block,
 			const size_t prev = sub_tails[radix_8].prev_index;
 			++sub_tails[radix_8].list_count;
 			// Link the previous location to here
-			match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), uint_fast32_t(2));
+			match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), UintFast32(2));
 		}
 		else {
 			flag_table_8.Set(radix_8);
 			sub_tails[radix_8].list_count = 1;
 			// Add new sub-list to the stack
-			stack[st_index].head = static_cast<uint_fast32_t>(link);
+			stack[st_index].head = static_cast<UintFast32>(link);
 			// Converted to a count at the end
-			stack[st_index].count = static_cast<uint_fast32_t>(radix_8);
+			stack[st_index].count = static_cast<UintFast32>(radix_8);
 			++st_index;
 		}
-		sub_tails[radix_8].prev_index = static_cast<uint_fast32_t>(link);
+		sub_tails[radix_8].prev_index = static_cast<UintFast32>(link);
 		link = next_link;
 	} while (--count > 0);
 	if (flag_table_8.IsSet(next_radix_8)) {
 		const size_t prev = sub_tails[next_radix_8].prev_index;
 		++sub_tails[next_radix_8].list_count;
-		match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), uint_fast32_t(2));
-		sub_tails[next_radix_8].prev_index = static_cast<uint_fast32_t>(link);
+		match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), UintFast32(2));
+		sub_tails[next_radix_8].prev_index = static_cast<UintFast32>(link);
 	}
 	for (size_t j = 0; j < st_index; ++j) {
 		size_t radix_8 = stack[j].count;
@@ -559,8 +559,8 @@ template<class MatchTableT>
 void MatchTableBuilder::RecurseLists16(const DataBlock& block,
 	MatchTableT& match_table,
 	size_t link,
-	uint_fast32_t count,
-	uint_fast32_t max_depth)
+	UintFast32 count,
+	UintFast32 max_depth)
 {
 	flag_table_8.Reset();
 	flag_table_16.Reset();
@@ -579,7 +579,7 @@ void MatchTableBuilder::RecurseLists16(const DataBlock& block,
 		// Pre-load the next link
 		size_t next_link = match_table.GetInitialMatchLink(link);
 		// Initialization doesn't set lengths to 2 because it's a waste of time if buffering is used
-		match_table.SetMatchLength(link, static_cast<uint_fast32_t>(next_link), uint_fast32_t(2));
+		match_table.SetMatchLength(link, static_cast<UintFast32>(next_link), UintFast32(2));
 		size_t radix_8 = next_radix_8;
 		size_t radix_16 = next_radix_16;
 		next_radix_8 = data_src[next_link];
@@ -588,7 +588,7 @@ void MatchTableBuilder::RecurseLists16(const DataBlock& block,
 			const size_t prev = prev_index_8[radix_8];
 			// Link the previous occurrence to this one at length 3.
 			// This will be overwritten if a 4 is found.
-			match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), uint_fast32_t(3));
+			match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), UintFast32(3));
 		}
 		else {
 			flag_table_8.Set(radix_8);
@@ -598,27 +598,27 @@ void MatchTableBuilder::RecurseLists16(const DataBlock& block,
 			const size_t prev = sub_tails[radix_16].prev_index;
 			++sub_tails[radix_16].list_count;
 			// Link at length 4, overwriting the 3
-			match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), uint_fast32_t(4));
+			match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), UintFast32(4));
 		}
 		else if (link >= block_start) {
 			flag_table_16.Set(radix_16);
 			sub_tails[radix_16].list_count = 1;
-			stack[st_index].head = static_cast<uint_fast32_t>(link);
-			stack[st_index].count = static_cast<uint_fast32_t>(radix_16);
+			stack[st_index].head = static_cast<UintFast32>(link);
+			stack[st_index].count = static_cast<UintFast32>(radix_16);
 			++st_index;
 		}
-		sub_tails[radix_16].prev_index = static_cast<uint_fast32_t>(link);
+		sub_tails[radix_16].prev_index = static_cast<UintFast32>(link);
 		link = next_link;
 	} while (--count > 0);
 	// Do the last location
 	if (flag_table_8.IsSet(next_radix_8)) {
 		const size_t prev = prev_index_8[next_radix_8];
-		match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), uint_fast32_t(3));
+		match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), UintFast32(3));
 	}
 	if (flag_table_16.IsSet(next_radix_16)) {
 		const size_t prev = sub_tails[next_radix_16].prev_index;
 		++sub_tails[next_radix_16].list_count;
-		match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), uint_fast32_t(4));
+		match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), UintFast32(4));
 	}
 	for (size_t i = 0; i < st_index; ++i) {
 		stack[i].count = sub_tails[stack[i].count].list_count;
@@ -630,14 +630,14 @@ template<class MatchTableT>
 void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 	MatchTableT& match_table,
 	size_t st_index,
-	uint_fast32_t max_depth)
+	UintFast32 max_depth)
 {
 	// Maximum depth at which lists will be sent to the buffered method.
-	uint_fast32_t max_buffered_depth = max_depth - std::min<uint_fast32_t>(max_depth / 4 + 2, 8u);
+	UintFast32 max_buffered_depth = max_depth - std::min<UintFast32>(max_depth / 4 + 2, 8u);
 	size_t block_start = block.start;
 	while (st_index > 0) {
 		--st_index;
-		uint_fast32_t list_count = stack[st_index].count;
+		UintFast32 list_count = stack[st_index].count;
 		if (list_count < 2) {
 			// Nothing to do
 			continue;
@@ -650,7 +650,7 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 		}
 		size_t link = stack[st_index].head;
 		// The current depth
-		uint_fast32_t depth = match_table.GetMatchLength(link);
+		UintFast32 depth = match_table.GetMatchLength(link);
 		if (list_count >= kMinBufferedListSize
 			&& list_count <= match_buffer_.size()
 			&& depth <= max_buffered_depth)
@@ -685,7 +685,7 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 		// Next depth for 1 extra char
 		++depth;
 		// and for 2
-		uint_fast32_t depth_2 = depth + 1;
+		UintFast32 depth_2 = depth + 1;
 		flag_table_8.Reset();
 		flag_table_16.Reset();
 		size_t prev_index_8[kRadixTableSizeSmall];
@@ -703,7 +703,7 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 				if (flag_table_8.IsSet(radix_8)) {
 					const size_t prev = prev_index_8[radix_8];
 					// Odd numbered match length, will be overwritten if 2 chars are matched
-					match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth);
+					match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth);
 				}
 				else {
 					flag_table_8.Set(radix_8);
@@ -712,26 +712,26 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 				if (flag_table_16.IsSet(radix_16)) {
 					const size_t prev = sub_tails[radix_16].prev_index;
 					++sub_tails[radix_16].list_count;
-					match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth_2);
+					match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth_2);
 				}
 				else if (link >= block_start) {
 					flag_table_16.Set(radix_16);
 					sub_tails[radix_16].list_count = 1;
-					stack[st_index].head = static_cast<uint_fast32_t>(link);
-					stack[st_index].count = static_cast<uint_fast32_t>(radix_16);
+					stack[st_index].head = static_cast<UintFast32>(link);
+					stack[st_index].count = static_cast<UintFast32>(radix_16);
 					++st_index;
 				}
-				sub_tails[radix_16].prev_index = static_cast<uint_fast32_t>(link);
+				sub_tails[radix_16].prev_index = static_cast<UintFast32>(link);
 				link = next_link;
 			} while (--list_count != 0);
 			if (flag_table_8.IsSet(next_radix_8)) {
 				const size_t prev = prev_index_8[next_radix_8];
-				match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth);
+				match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth);
 			}
 			if (flag_table_16.IsSet(next_radix_16)) {
 				const size_t prev = sub_tails[next_radix_16].prev_index;
 				++sub_tails[next_radix_16].list_count;
-				match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth_2);
+				match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth_2);
 			}
 			for (size_t i = prev_st_index; i < st_index; ++i) {
 				stack[i].count = sub_tails[stack[i].count].list_count;
@@ -746,7 +746,7 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 				next_radix_16 = next_radix_8 + (static_cast<size_t>(data_src[next_link + 1]) << 8);
 				if (flag_table_8.IsSet(radix_8)) {
 					const size_t prev = prev_index_8[radix_8];
-					match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth);
+					match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth);
 				}
 				else {
 					flag_table_8.Set(radix_8);
@@ -754,21 +754,21 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 				prev_index_8[radix_8] = link;
 				if (flag_table_16.IsSet(radix_16)) {
 					const size_t prev = sub_tails[radix_16].prev_index;
-					match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth_2);
+					match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth_2);
 				}
 				else if (link >= block_start) {
 					flag_table_16.Set(radix_16);
 				}
-				sub_tails[radix_16].prev_index = static_cast<uint_fast32_t>(link);
+				sub_tails[radix_16].prev_index = static_cast<UintFast32>(link);
 				link = next_link;
 			} while (--list_count != 0);
 			if (flag_table_8.IsSet(next_radix_8)) {
 				const size_t prev = prev_index_8[next_radix_8];
-				match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth);
+				match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth);
 			}
 			if (flag_table_16.IsSet(next_radix_16)) {
 				const size_t prev = sub_tails[next_radix_16].prev_index;
-				match_table.SetMatchLinkAndLength(prev, static_cast<uint_fast32_t>(link), depth_2);
+				match_table.SetMatchLinkAndLength(prev, static_cast<UintFast32>(link), depth_2);
 			}
 		}
 	}
@@ -776,14 +776,14 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 
 // Check to see if there are multiple overlapping matches in a row and delete them
 template<class MatchTableT>
-uint_fast32_t MatchTableBuilder::RepeatCheck(MatchTableT& match_table,
+UintFast32 MatchTableBuilder::RepeatCheck(MatchTableT& match_table,
 	size_t link,
-	uint_fast32_t depth,
-	uint_fast32_t list_count)
+	UintFast32 depth,
+	UintFast32 list_count)
 {
 	int_fast32_t n = list_count - 1;
 	int_fast32_t rpt = -1;
-	size_t rpt_tail;
+	size_t rpt_tail = link;
 	do {
 		size_t next_link = match_table.GetMatchLink(link);
 		if (link - next_link <= depth) {
@@ -794,7 +794,7 @@ uint_fast32_t MatchTableBuilder::RepeatCheck(MatchTableT& match_table,
 		else {
 			if (rpt > kMaxOverlappingRpt - 1) {
 				// Link the last one to the first
-				match_table.SetMatchLink(rpt_tail, static_cast<uint_fast32_t>(link), depth);
+				match_table.SetMatchLink(rpt_tail, static_cast<UintFast32>(link), depth);
 				list_count -= rpt;
 			}
 			rpt = -1;
@@ -802,7 +802,7 @@ uint_fast32_t MatchTableBuilder::RepeatCheck(MatchTableT& match_table,
 		link = next_link;
 	} while (--n);
 	if (rpt > kMaxOverlappingRpt - 1) {
-		match_table.SetMatchLink(rpt_tail, static_cast<uint_fast32_t>(link), depth);
+		match_table.SetMatchLink(rpt_tail, static_cast<UintFast32>(link), depth);
 		list_count -= rpt;
 	}
 	return list_count;
@@ -814,8 +814,8 @@ void MatchTableBuilder::BruteForce(const DataBlock& block,
 	MatchTableT& match_table,
 	size_t link,
 	size_t list_count,
-	uint_fast32_t depth,
-	uint_fast32_t max_depth)
+	UintFast32 depth,
+	UintFast32 max_depth)
 {
 	size_t buffer[kMaxBruteForceListSize + 1];
 	buffer[0] = link;
@@ -850,8 +850,8 @@ void MatchTableBuilder::BruteForce(const DataBlock& block,
 		} while (++j < list_count);
 		if (longest > 0) {
 			match_table.SetMatchLinkAndLength(buffer[i],
-				static_cast<uint_fast32_t>(buffer[longest_index]),
-				depth + static_cast<uint_fast32_t>(longest));
+				static_cast<UintFast32>(buffer[longest_index]),
+				depth + static_cast<UintFast32>(longest));
 		}
 		++i;
 	} while (i < list_count - 1 && buffer[i] >= block_start);

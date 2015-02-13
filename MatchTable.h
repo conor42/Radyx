@@ -65,9 +65,9 @@ public:
 	bool IsRandom() const { return is_random; }
 
 private:
-	static const uint_fast32_t kNullLink = MatchTableBuilder::kNullLink;
+	static const UintFast32 kNullLink = MatchTableBuilder::kNullLink;
 	static const size_t kMin16BitInit = 1 << 19;
-	static const uint_fast32_t kMaxRepeat = 16;
+	static const UintFast32 kMaxRepeat = 16;
 	static const unsigned kHeadTableBits = 16;
 	static const unsigned kHeadTableBitsSmall = 8;
 	static const size_t kHeadTableSize = size_t(1) << kHeadTableBits;
@@ -107,7 +107,7 @@ private:
 	void InitLinks8(const DataBlock& block, Progress* progress);
 	void InitLinks16(const DataBlock& block, Progress* progress);
 	template<unsigned kMatchLenMax>
-	inline unsigned ExtendMatch(const DataBlock& block, size_t index, uint_fast32_t link, unsigned length) const;
+	inline unsigned ExtendMatch(const DataBlock& block, size_t index, UintFast32 link, unsigned length) const;
 
 	// Match table storage and manipulation object
 	MatchTableT match_table;
@@ -184,8 +184,8 @@ template<unsigned kMatchLenMax>
 MatchResult MatchTable<MatchTableT>::GetMatch(const DataBlock& block, size_t index) const
 {
 	MatchResult match;
-	uint_fast32_t link = match_table.GetMatchLinkAndLength(index, match.length);
-	match.dist = static_cast<uint_fast32_t>(index) - link - 1;
+	UintFast32 link = match_table.GetMatchLinkAndLength(index, match.length);
+	match.dist = static_cast<UintFast32>(index) - link - 1;
 	if (static_cast<uint8_t>(match.length) == search_depth
 		|| match.length == match_table.kMaxLength // from HandleRepeat
 		|| ((match.length & MatchTableBuilder::kRptCheckMask) == 0 && match.dist < match.length))
@@ -277,7 +277,7 @@ void MatchTable<MatchTableT>::CreateDivision(size_t index)
 {
 	// Restrict the match lengths so that they don't reach beyond index
 	match_table.SetNull(index - 1);
-	for (uint_fast32_t length = 2; length < match_table.kMaxLength && length <= index; ++length) {
+	for (UintFast32 length = 2; length < match_table.kMaxLength && length <= index; ++length) {
 		match_table.RestrictMatchLength(index - length, length);
 	}
 }
@@ -319,7 +319,7 @@ size_t MatchTable<MatchTableT>::HandleRepeat(const DataBlock& block, ptrdiff_t b
 {
 	ptrdiff_t rpt_index = i - (kMaxRepeat - 3);
 	// Set the head to the first byte of the repeat and adjust the count
-	head_table[radix_8].head = static_cast<uint_fast32_t>(rpt_index - 1);
+	head_table[radix_8].head = static_cast<UintFast32>(rpt_index - 1);
 	head_table[radix_8].count -= kMaxRepeat - 3;
 	const uint8_t* data_block = block.data;
 	// Find the end
@@ -332,12 +332,12 @@ size_t MatchTable<MatchTableT>::HandleRepeat(const DataBlock& block, ptrdiff_t b
 	if (i >= static_cast<ptrdiff_t>(block.start)) {
 		// Set matches at distance 1 and max length
 		for (; rpt_index < max_match_end; ++rpt_index) {
-			match_table.SetMatchLinkAndLength(rpt_index, static_cast<uint_fast32_t>(rpt_index - 1), match_table.kMaxLength);
+			match_table.SetMatchLinkAndLength(rpt_index, static_cast<UintFast32>(rpt_index - 1), match_table.kMaxLength);
 		}
-		uint_fast32_t len = static_cast<uint_fast32_t>(i - rpt_index + 5);
+		UintFast32 len = static_cast<UintFast32>(i - rpt_index + 5);
 		// Set matches at distance 1 and available length
 		for (; rpt_index <= i; ++rpt_index, --len) {
-			match_table.SetMatchLinkAndLength(rpt_index, static_cast<uint_fast32_t>(rpt_index - 1), len);
+			match_table.SetMatchLinkAndLength(rpt_index, static_cast<UintFast32>(rpt_index - 1), len);
 		}
 	}
 	return i;
@@ -351,7 +351,7 @@ void MatchTable<MatchTableT>::InitLinks8(const DataBlock& block, Progress* progr
 	const uint8_t* data_block = block.data;
 	size_t radix_8 = data_block[0];
 	const ptrdiff_t block_size = block.end - 1;
-	uint_fast32_t count = 0;
+	UintFast32 count = 0;
 	// Pre-load the next byte
 	size_t next_next_radix = data_block[1];
 	for (ptrdiff_t i = 0; i < block_size; ++i) {
@@ -364,7 +364,7 @@ void MatchTable<MatchTableT>::InitLinks8(const DataBlock& block, Progress* progr
 			// Link this position to the previous occurance
 			match_table.InitMatchLink(i, cur_list_head.head);
 			// Set the previous to this position
-			cur_list_head.head = static_cast<uint_fast32_t>(i);
+			cur_list_head.head = static_cast<UintFast32>(i);
 			++cur_list_head.count;
 			radix_8 = next_radix;
 		}
@@ -374,7 +374,7 @@ void MatchTable<MatchTableT>::InitLinks8(const DataBlock& block, Progress* progr
 			if (count < kMaxRepeat - 1) {
 				MatchTableBuilder::ListHead& cur_list_head = head_table[radix_8];
 				match_table.InitMatchLink(i, cur_list_head.head);
-				cur_list_head.head = static_cast<uint_fast32_t>(i);
+				cur_list_head.head = static_cast<UintFast32>(i);
 				++cur_list_head.count;
 				radix_8 = next_radix;
 			}
@@ -403,7 +403,7 @@ void MatchTable<MatchTableT>::InitLinks16(const DataBlock& block, Progress* prog
 	// Initial 2-byte radix value
 	size_t radix_16 = (size_t(data_block[0]) << 8) | data_block[1];
 	const ptrdiff_t block_size = block.end - 2;
-	uint_fast32_t count = 0;
+	UintFast32 count = 0;
 	ptrdiff_t rpt_total = 0;
 	for (ptrdiff_t i = 0; i < block_size; ++i)
 	{
@@ -416,7 +416,7 @@ void MatchTable<MatchTableT>::InitLinks16(const DataBlock& block, Progress* prog
 			// Link this position to the previous occurance
 			match_table.InitMatchLink(i, cur_list_head.head);
 			// Set the previous to this position
-			cur_list_head.head = static_cast<uint_fast32_t>(i);
+			cur_list_head.head = static_cast<UintFast32>(i);
 			++cur_list_head.count;
 			radix_16 = next_radix;
 		}
@@ -426,7 +426,7 @@ void MatchTable<MatchTableT>::InitLinks16(const DataBlock& block, Progress* prog
 			if (count < kMaxRepeat - 1) {
 				MatchTableBuilder::ListHead& cur_list_head = head_table[radix_16];
 				match_table.InitMatchLink(i, cur_list_head.head);
-				cur_list_head.head = static_cast<uint_fast32_t>(i);
+				cur_list_head.head = static_cast<UintFast32>(i);
 				++cur_list_head.count;
 				radix_16 = next_radix;
 			}
@@ -444,7 +444,7 @@ void MatchTable<MatchTableT>::InitLinks16(const DataBlock& block, Progress* prog
 	}
 	// Handle the last value
 	if (head_table[radix_16].head != kNullLink) {
-		match_table.SetMatchLinkAndLength(block_size, head_table[radix_16].head, uint_fast32_t(2));
+		match_table.SetMatchLinkAndLength(block_size, head_table[radix_16].head, UintFast32(2));
 	}
 	else {
 		match_table.SetNull(block_size);
@@ -486,10 +486,10 @@ void MatchTable<MatchTableT>::InitLinks16(const DataBlock& block, Progress* prog
 		if (deviation <= limit) {
 			// We have an even distribution of 16-bit values. Now check for matches by counting the occurrence
 			// of distance[n] == distance[n+1]. Crude but it helps.
-			uint_fast32_t nonrnd_count = 0;
-			uint_fast32_t prev_link = kNullLink;
+			UintFast32 nonrnd_count = 0;
+			UintFast32 prev_link = kNullLink;
 			for (ptrdiff_t i = block.start; i < block_size; ++i) {
-				uint_fast32_t link = match_table.GetInitialMatchLink(i);
+				UintFast32 link = match_table.GetInitialMatchLink(i);
 				// if prev_link == kNullLink and link == 0 this increments erroneously but it can only happen once.
 				nonrnd_count += (link == prev_link + 1);
 				prev_link = link;
@@ -507,7 +507,7 @@ template<class MatchTableT>
 template<unsigned kMatchLenMax>
 unsigned MatchTable<MatchTableT>::ExtendMatch(const DataBlock& block,
 	size_t start_index,
-	uint_fast32_t link,
+	UintFast32 link,
 	unsigned length) const
 {
 	size_t end_index = start_index + length;
@@ -538,10 +538,10 @@ bool MatchTable<MatchTableT>::IsRandom(const DataBlock& block, size_t index, siz
 	size_t end = index + size;
 	std::array<int_fast32_t, 0x100> char_count;
 	char_count.fill(0);
-	uint_fast32_t length_total = 0;
+	UintFast32 length_total = 0;
 	// Calculate a target length sum from the size of the chunk and the logarithm
 	// of the available dictionary at this point.
-	uint_fast32_t length_target = static_cast<uint_fast32_t>(
+	UintFast32 length_target = static_cast<UintFast32>(
 		static_cast<float_t>(size) * log(static_cast<float_t>(end)) * kMaxMatchLenFactor);
 	for (; index < end; ++index) {
 		if (match_table.HaveMatch(index)) {
@@ -551,7 +551,7 @@ bool MatchTable<MatchTableT>::IsRandom(const DataBlock& block, size_t index, siz
 		else {
 			++length_total;
 		}
-		if (length_total + static_cast<uint_fast32_t>(end - index) > length_target) {
+		if (length_total + static_cast<UintFast32>(end - index) > length_target) {
 			return false;
 		}
 		++char_count[block.data[index]];

@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\ArchiveCompressor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -115,6 +112,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\MatchResult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\HashChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

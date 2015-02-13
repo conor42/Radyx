@@ -565,6 +565,10 @@ size_t Lzma2Encoder::InitMatchesPos0Best(const DataBlock& block,
 	return 0;
 }
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 // The speed of this method is critical and the sections have so many variables
 // in common that breaking it up would be inefficient, so it remains a monolith.
 // For each position cur, starting at 1, this is called to check all possible

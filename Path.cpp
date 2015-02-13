@@ -145,4 +145,29 @@ FsString Path::GetName() const
 	return substr(GetNamePos());
 }
 
+// Is path a relative path containing only directory names (not ..\ etc)
+bool Path::IsPureRelativePath() const
+{
+	if (length() < 1 || front() == separator) {
+		return false;
+	}
+#ifdef _WIN32
+	if (length() > 1 && at(1) == drive_specifier) {
+		return false;
+	}
+#endif
+	size_t i = 0;
+	size_t end = find_first_of(separator);
+	while (end != npos) {
+		for (; i < end && operator[](i) == '.'; ++i) {
+		}
+		if (i == end) {
+			return false;
+		}
+		i = end + 1;
+		end = find_first_of(separator, end + 1);
+	}
+	return true;
+}
+
 }

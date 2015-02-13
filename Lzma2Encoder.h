@@ -222,10 +222,8 @@ private:
 	static inline unsigned FastDistShift(unsigned n);
 	static inline unsigned FastDistResult(uint_fast32_t dist, unsigned n);
 	static size_t GetDistSlot(uint_fast32_t distance);
-	static inline size_t GetLenToDistState(unsigned len);
-#if defined(__x86_64__) || defined(_M_X64)
-	static inline size_t GetLenToDistState(size_t len);
-#endif
+	template<class T>
+	static inline size_t GetLenToDistState(T len);
 	static inline bool IsCharState(size_t state);
 	inline unsigned GetRepLen1Price(size_t state, size_t pos_state);
 	inline unsigned GetRepPrice(size_t rep_index, size_t state, size_t pos_state);
@@ -369,17 +367,11 @@ RangeEncoder::Probability* Lzma2Encoder::GetLiteralProbs(size_t pos, unsigned pr
 	return encoder_states.literal_probs + (((pos & lit_pos_mask) << lc) + (prev_symbol >> (8 - lc))) * kNumLiterals * kNumLitTables;
 }
 
-size_t Lzma2Encoder::GetLenToDistState(unsigned len)
+template<class T>
+size_t Lzma2Encoder::GetLenToDistState(T len)
 {
 	return (len < kNumLenToPosStates + 1) ? len - 2 : kNumLenToPosStates - 1;
 }
-
-#if defined(__x86_64__) || defined(_M_X64)
-size_t Lzma2Encoder::GetLenToDistState(size_t len)
-{
-	return (len < kNumLenToPosStates + 1) ? len - 2 : kNumLenToPosStates - 1;
-}
-#endif
 
 bool Lzma2Encoder::IsCharState(size_t state)
 {
@@ -537,7 +529,7 @@ size_t Lzma2Encoder::EncodeChunkFast(const DataBlock& block,
 		MatchResult match;
 		match.length = 0;
 		if (match_table.HaveMatch(index)) {
-			match = GetOptimumFast<MatchTableT>(block, match_table, index);
+			match = GetOptimumFast(block, match_table, index);
 		}
 		assert(index + match.length <= block.end);
 		if (match.length == 0) {
@@ -687,7 +679,7 @@ size_t Lzma2Encoder::EncodeChunkBest(const DataBlock& block,
 	while (index < uncompressed_end && !rc.IsFull())
 	{
 		if (match_table.HaveMatch(index)) {
-			index = EncodeOptimumSequence<MatchTableT>(block, match_table, index, uncompressed_end, opt_buf);
+			index = EncodeOptimumSequence(block, match_table, index, uncompressed_end, opt_buf);
 			if (match_price_count >= kDistanceRepriceFrequency) {
 				FillDistancesPrices();
 			}
@@ -769,13 +761,13 @@ size_t Lzma2Encoder::Encode(MatchTable<MatchTableT>& match_table,
 				EncodeLiteral(0, block.data[0], 0);
 			}
 			if (encoder_mode == Lzma2Options::kFastMode) {
-				next_index = EncodeChunkFast<MatchTableT>(encoder_block,
+				next_index = EncodeChunkFast(encoder_block,
 					match_table,
 					index + (index == 0),
 					std::min(encoder_block.end, index + kMaxChunkUncompressedSize));
 			}
 			else {
-				next_index = EncodeChunkBest<MatchTableT>(encoder_block,
+				next_index = EncodeChunkBest(encoder_block,
 					match_table,
 					index + (index == 0),
 					std::min(encoder_block.end, index + kMaxChunkUncompressedSize - opt_buf.size()),

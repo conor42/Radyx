@@ -40,25 +40,38 @@ namespace Radyx {
 
 static bool CompareFileSpec(const RadyxOptions::FileSpec& first, const RadyxOptions::FileSpec& second)
 {
-	if (first.root != second.root) {
-		return first.root < second.root;
+	if (first.name != second.name) {
+		return first.name < second.name;
 	}
-	return first.path.FsCompare(0, first.root, second.path, 0, first.root) < 0;
+	return first.path.FsCompare(0, first.name, second.path, 0, first.name) < 0;
 }
 
 RadyxOptions::FileSpec::FileSpec(const _TCHAR* path_, Recurse recurse_)
 	: path(path_),
-	root(path.GetNamePos()),
-	recurse(recurse_ == kRecurseAll || (recurse_ == kRecurseWildcard && Path::IsWildcard(path.c_str() + root)))
+	root(0),
+	name(0),
+	recurse(recurse_ == kRecurseAll || (recurse_ == kRecurseWildcard && Path::IsWildcard(path.c_str() + name)))
 {
 	path.ConvertSeparators();
+	name = path.GetNamePos();
+	if (!path.IsPureRelativePath()) {
+		root = name;
+	}
 }
 
 void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path, unsigned length)
 {
 	if(path.compare(full_path) != 0) {
+		size_t length = path.length();
+		size_t old_name = name;
 		path = full_path;
-		root = path.GetNamePos();
+		name = path.GetNamePos();
+		if (root != old_name) {
+			root += path.length() - length;
+		}
+		else {
+			root = name;
+		}
 	}
 }
 
@@ -651,10 +664,18 @@ void RadyxOptions::LoadFullPaths()
 		temp = fs.path;
 		temp.SetName(".");
 		if (realpath(temp.c_str(), full_path.get()) != NULL) {
-			temp = fs.path.c_str() + fs.path.GetNamePos();
+			temp = fs.path.c_str() + fs.name;
+			size_t length = fs.path.length();
+			size_t old_name = fs.name;
 			fs.path = full_path.get();
 			fs.path.AppendName(temp.c_str());
-			fs.root = fs.path.GetNamePos();
+			fs.name = fs.path.GetNamePos();
+			if (root != old_name) {
+				root += fs.path.length() - length;
+			}
+			else {
+				root = fs.name;
+			}
 	}
 #endif
 	}
@@ -664,11 +685,11 @@ bool RadyxOptions::SearchExclusions(const Path& path, size_t root, bool is_root)
 {
 	for (const auto& it : exclusions ) {
 		if (is_root || it.recurse) {
-			if (it.root != 0) {
+			if (it.name != 0) {
 				// Exclusion contains a path
-				size_t excl_name = it.path.GetNamePos();
-				if (path.FsCompare(root, root + excl_name, it.path, 0, excl_name) == 0 &&
-					Path::MatchFileSpec(path.c_str() + path.GetNamePos(), it.path.c_str() + excl_name)) {
+				if (root + it.name <= path.length() &&
+					path.FsCompare(root, root + it.name, it.path, 0, it.name) == 0 &&
+					Path::MatchFileSpec(path.c_str() + path.GetNamePos(), it.path.c_str() + it.name)) {
 					return true;
 				}
 			}
@@ -689,8 +710,8 @@ void RadyxOptions::GetFiles(ArchiveCompressor& arch_comp) const
 		auto end = it;
 		// Find all file specs in the same dir
 		for (++end; end != file_specs.cend()
-			&& it->root == end->root
-			&& it->path.compare(0, it->root, end->path, 0, it->root) == 0; ++end) {
+			&& it->name == end->name
+			&& it->path.FsCompare(0, it->name, end->path, 0, it->name) == 0; ++end) {
 		}
 		// Search the dir for all of them
 		SearchDir(it, end, arch_comp);
@@ -714,11 +735,11 @@ void RadyxOptions::SearchDir(std::list<FileSpec>::const_iterator it_first,
 		dir = it_first->path;
 	}
 	else {
-		dir = it_first->path.substr(0, it_first->root);
+		dir = it_first->path.substr(0, it_first->name);
 		dir.push_back(Path::wildcard_all);
 	}
 #else
-	dir = it_first->path.substr(0, it_first->root);
+	dir = it_first->path.substr(0, it_first->name);
 	if (dir.length() == 0) {
 		dir = ".";
 	}
@@ -769,7 +790,7 @@ bool RadyxOptions::IsMatch(std::list<FileSpec>::const_iterator it_first,
 	bool is_root) const
 {
 	for (auto it = it_first; it != it_end; ++it) {
-		if ((is_root || it->recurse) && Path::MatchFileSpec(name, it->path.c_str() + it->root)) {
+		if ((is_root || it->recurse) && Path::MatchFileSpec(name, it->path.c_str() + it->name)) {
 			return true;
 		}
 	}

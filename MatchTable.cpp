@@ -27,7 +27,7 @@
 
 namespace Radyx {
 
-const std::array<uint_fast32_t, 4> PackedMatchTable::kMatchBufferSize =
+const std::array<UintFast32, 4> PackedMatchTable::kMatchBufferSize =
 { 768 * 1024, 300 * 1024, 180 * 1024, 128 * 1024 };
 
 }

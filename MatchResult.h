@@ -30,9 +30,9 @@ namespace Radyx {
 struct MatchResult
 {
 	unsigned length;
-	uint_fast32_t dist;
+	UintFast32 dist;
 	MatchResult() {}
-	MatchResult(unsigned length_, uint_fast32_t dist_) : length(length_), dist(dist_) {}
+	MatchResult(unsigned length_, UintFast32 dist_) : length(length_), dist(dist_) {}
 };
 
 template<size_t kMatchLenMin, size_t kMatchLenMax>
