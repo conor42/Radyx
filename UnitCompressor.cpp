@@ -122,7 +122,7 @@ void UnitCompressor::CheckError() const
 
 void UnitCompressor::Compress(CompressorInterface& compressor,
 	ThreadPool& threads,
-	std::ostream& out_stream,
+	OutputStream& out_stream,
 	Progress* progress)
 {
 	CheckError();
@@ -176,12 +176,12 @@ void UnitCompressor::Shift()
 	block_end = block_start;
 }
 
-void UnitCompressor::Write(std::ostream& out_stream)
+void UnitCompressor::Write(OutputStream& out_stream)
 {
 	CheckError();
 	size_t to_write = block_end - block_start;
 	out_stream.write(reinterpret_cast<const char*>(data_buffer[buffer_index].get() + block_start), to_write);
-	if (out_stream.fail()) {
+	if (!g_break && out_stream.fail()) {
 		throw IoException(Strings::kCannotWriteArchive, _T(""));
 	}
 	unpack_size += to_write;

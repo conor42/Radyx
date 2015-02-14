@@ -176,6 +176,7 @@
     <ClInclude Include="..\MatchTable.h" />
     <ClInclude Include="..\MatchTableBuilder.h" />
     <ClInclude Include="..\OptionalSetting.h" />
+    <ClInclude Include="..\OutputFile.h" />
     <ClInclude Include="..\PackedMatchTable.h" />
     <ClInclude Include="..\Path.h" />
     <ClInclude Include="..\Progress.h" />
@@ -201,6 +202,7 @@
     <ClCompile Include="..\Lzma2Options.cpp" />
     <ClCompile Include="..\MatchTable.cpp" />
     <ClCompile Include="..\MatchTableBuilder.cpp" />
+    <ClCompile Include="..\OutputFile.cpp" />
     <ClCompile Include="..\Path.cpp" />
     <ClCompile Include="..\Progress.cpp" />
     <ClCompile Include="..\RadyxOptions.cpp" />

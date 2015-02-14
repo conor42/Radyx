@@ -31,6 +31,7 @@
 #include <csignal>
 #include "../winlean.h"
 #include "../common.h"
+#include "../OutputFile.h"
 #include "../CharType.h"
 #include "../Lzma2Compressor.h"
 #include "../ArchiveCompressor.h"
@@ -66,7 +67,7 @@ void PrintBanner()
 		<< std::endl;
 }
 
-bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, std::ofstream& file_stream)
+bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, OutputFile& file_stream)
 {
 	bool is_dev_null = archive_path.IsDevNull();
 #ifdef _WIN32
@@ -80,9 +81,9 @@ bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, std
 		std::Tcerr << Strings::kErrorCol_ << Strings::kArchiveFileExists << std::endl;
 		throw std::invalid_argument("");
 	}
-	file_stream.open(archive_path.c_str(), std::ios_base::trunc | std::ios_base::binary
-#ifdef _WIN32
-		, _SH_DENYWR
+	file_stream.open(archive_path.c_str()
+#ifndef _WIN32
+		, std::ios_base::trunc | std::ios_base::binary
 #endif
 		);
 	if (file_stream.fail()) {
@@ -127,7 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			std::Tcerr << Strings::kNoFilesFound << std::endl;
 			return EXIT_SUCCESS;
 		}
-		std::ofstream out_stream;
+		OutputFile out_stream;
 		created_file = OpenOutputStream(archive_path, options, out_stream);
 		Container7z::ReserveSignatureHeader(out_stream);
 #ifdef _WIN32

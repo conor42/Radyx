@@ -166,7 +166,7 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 	CompressorInterface& compressor,
 	const RadyxOptions& options,
 	ThreadPool& threads,
-	std::ostream& out_stream)
+	OutputStream& out_stream)
 {
 	if (file_list.size() == 0) {
 		return 0;
@@ -294,7 +294,7 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 	const RadyxOptions& options,
 	ThreadPool& threads,
 	Progress& progress,
-	std::ostream& out_stream)
+	OutputStream& out_stream)
 {
 	uint_least64_t initial_size = fi.size;
 	FileReader reader(fi.path, options.share_deny_none);

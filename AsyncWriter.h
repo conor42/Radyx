@@ -26,7 +26,7 @@
 #define RADYX_ASYNC_WRITER_H
 
 #include <atomic>
-#include <ostream>
+#include "OutputFile.h"
 #include "ThreadPool.h"
 #include "ErrorCode.h"
 
@@ -35,7 +35,7 @@ namespace Radyx {
 class AsyncWriter
 {
 public:
-	AsyncWriter(std::ostream& out_stream_, ThreadPool::Thread& thread_)
+	AsyncWriter(OutputStream& out_stream_, ThreadPool::Thread& thread_)
 		: out_stream(out_stream_), thread(thread_), out_buffer(nullptr) {}
 	void Write(uint8_t* out_buffer_, size_t buffer_size_);
 	bool Fail() const { return error.type != ErrorCode::kGood; }
@@ -43,7 +43,7 @@ public:
 private:
 	static void ThreadFn(void* pwork, int unused);
 
-	std::ostream& out_stream;
+	OutputStream& out_stream;
 	ThreadPool::Thread& thread;
 	uint8_t* out_buffer;
 	std::atomic_size_t buffer_size;

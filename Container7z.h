@@ -34,6 +34,7 @@
 #include "CompressorInterface.h"
 #include "CompressedUint64.h"
 #include "ThreadPool.h"
+#include "OutputFile.h"
 #include "CharType.h"
 
 namespace Radyx {
@@ -41,12 +42,12 @@ namespace Radyx {
 class Container7z
 {
 public:
-	static void ReserveSignatureHeader(std::ostream& out_stream);
+	static void ReserveSignatureHeader(OutputStream& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
 		UnitCompressor& unit_comp,
 		CompressorInterface& compressor,
 		ThreadPool& threads,
-		std::ostream& out_stream);
+		OutputStream& out_stream);
 
 private:
 	enum PropertyId
@@ -81,7 +82,7 @@ private:
 	class Writer
 	{
 	public:
-		Writer(UnitCompressor& unit_comp_, CompressorInterface* compressor_, ThreadPool& threads_, std::ostream& out_stream_)
+		Writer(UnitCompressor& unit_comp_, CompressorInterface* compressor_, ThreadPool& threads_, OutputStream& out_stream_)
 			: unit_comp(unit_comp_),
 			compressor(compressor_),
 			threads(threads_),
@@ -100,7 +101,7 @@ private:
 		UnitCompressor& unit_comp;
 		CompressorInterface* compressor;
 		ThreadPool& threads;
-		std::ostream& out_stream;
+		OutputStream& out_stream;
 		Crc32 crc32;
 
 		Writer(const Writer&) = delete;
@@ -150,18 +151,18 @@ private:
 		UnitCompressor& unit_comp,
 		CompressorInterface &compressor,
 		ThreadPool& threads,
-		std::ostream& out_stream);
+		OutputStream& out_stream);
 	static uint_fast32_t WriteHeaderHeader(UnitCompressor& unit_comp,
 		CompressorInterface& compressor,
 		uint_least64_t header_offset,
 		uint_least64_t header_pack_size,
 		uint_least64_t header_unpack_size,
 		ThreadPool& threads,
-		std::ostream& out_stream);
+		OutputStream& out_stream);
 	static void WriteSignatureHeader(uint_least64_t header_offset,
 		uint_least64_t header_size,
 		uint_fast32_t crc32,
-		std::ostream& out_stream);
+		OutputStream& out_stream);
 	static void WriteUint32(uint_fast32_t value, uint8_t* buffer);
 	static void WriteUint64(uint_least64_t value, uint8_t* buffer);
 };

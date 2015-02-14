@@ -26,6 +26,7 @@
 #define RADYX_UNIT_COMPRESSOR_H
 
 #include "common.h"
+#include "OutputFile.h"
 #include "ThreadPool.h"
 #include "CompressorInterface.h"
 #include "BcjX86.h"
@@ -46,10 +47,10 @@ public:
 	void RemoveByteCount(size_t count) { block_end -= count; }
 	void Compress(CompressorInterface& compressor,
 		ThreadPool& threads,
-		std::ostream& out_stream,
+		OutputStream& out_stream,
 		Progress* progress);
 	void Shift();
-	void Write(std::ostream& out_stream);
+	void Write(OutputStream& out_stream);
 	void CheckError() const;
 	inline void WaitCompletion();
 	size_t GetUnpackSize() const { return unpack_size; }
@@ -62,13 +63,13 @@ private:
 	{
 		CompressorInterface* compressor;
 		ThreadPool* threads;
-		std::ostream* out_stream;
+		OutputStream* out_stream;
 		Progress* progress;
 		DataBlock data_block;  // Must not be a reference
 		ThreadArgs() {}
 		ThreadArgs(CompressorInterface* compressor_,
 			ThreadPool* threads_,
-			std::ostream* out_stream_,
+			OutputStream* out_stream_,
 			Progress* progress_,
 			const DataBlock& data_block_)
 			: compressor(compressor_), threads(threads_), out_stream(out_stream_), progress(progress_), data_block(data_block_) {}

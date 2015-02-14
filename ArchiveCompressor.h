@@ -28,6 +28,7 @@
 
 #include <list>
 #include "common.h"
+#include "OutputFile.h"
 #include "Path.h"
 #include "ThreadPool.h"
 #include "OptionalSetting.h"
@@ -111,7 +112,7 @@ public:
 		CompressorInterface& compressor,
 		const RadyxOptions& options,
 		ThreadPool& threads,
-		std::ostream& out_stream);
+		OutputStream& out_stream);
 	const std::list<FileInfo>& GetFileList() const { return file_list; }
 	const std::list<DataUnit>& GetUnitList() const { return unit_list; }
 	size_t GetEmptyFileCount() const;
@@ -127,7 +128,7 @@ private:
 		const RadyxOptions& options,
 		ThreadPool& threads,
 		Progress& progress,
-		std::ostream& out_stream);
+		OutputStream& out_stream);
 	static unsigned GetExtensionIndex(const _TCHAR* ext);
 
 	std::list<FileInfo> file_list;

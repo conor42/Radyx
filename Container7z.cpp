@@ -97,7 +97,7 @@ void Container7z::Writer::Flush()
 	}
 }
 
-void Container7z::ReserveSignatureHeader(std::ostream& out_stream)
+void Container7z::ReserveSignatureHeader(OutputStream& out_stream)
 {
 	std::array<char, 32> buf;
 	buf.fill(0);
@@ -110,7 +110,7 @@ void Container7z::ReserveSignatureHeader(std::ostream& out_stream)
 void Container7z::WriteSignatureHeader(uint_least64_t header_offset,
 	uint_least64_t header_size,
 	uint_fast32_t header_crc32,
-	std::ostream& out_stream)
+	OutputStream& out_stream)
 {
 	out_stream.seekp(0);
 	out_stream.write(kSignature, sizeof(kSignature));
@@ -240,9 +240,9 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
 	CompressorInterface &compressor,
 	ThreadPool& threads,
-	std::ostream& out_stream)
+	OutputStream& out_stream)
 {
-	out_stream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	out_stream.exceptions(std::ios_base::failbit | std::ios_base::badbit);
 	unit_comp.Reset(false, false);
 	uint_least64_t packed_size = 0;
 	try {
@@ -269,7 +269,9 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 		packed_size += unit_comp.GetPackSize() + kSignatureHeaderSize;
 	}
 	catch (std::ios_base::failure&) {
-		throw IoException(Strings::kCannotWriteArchive, _T(""));
+		if (!g_break) {
+			throw IoException(Strings::kCannotWriteArchive, _T(""));
+		}
 	}
 	return packed_size;
 }
@@ -278,7 +280,7 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
 	CompressorInterface &compressor,
 	ThreadPool& threads,
-	std::ostream& out_stream)
+	OutputStream& out_stream)
 {
 	Writer writer(unit_comp, &compressor, threads, out_stream);
 	writer.WriteByte(kHeader);
@@ -352,7 +354,7 @@ uint_fast32_t Container7z::WriteHeaderHeader(UnitCompressor& unit_comp,
 	uint_least64_t header_pack_size,
 	uint_least64_t header_unpack_size,
 	ThreadPool& threads,
-	std::ostream& out_stream)
+	OutputStream& out_stream)
 {
 	Writer writer(unit_comp, nullptr, threads, out_stream);
 	writer.WriteCompressedUint64(kEncodedHeader);

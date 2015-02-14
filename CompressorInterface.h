@@ -25,7 +25,7 @@
 #ifndef RADYX_COMPRESSOR_INTERFACE_H
 #define RADYX_COMPRESSOR_INTERFACE_H
 
-#include <fstream>
+#include "OutputFile.h"
 #include "DataBlock.h"
 #include "ThreadPool.h"
 #include "Progress.h"
@@ -46,11 +46,11 @@ public:
 	// Compression method. This method should throw only bad_alloc and return I/O errors in error_code
 	virtual size_t Compress(const DataBlock& data_block,
 		ThreadPool& threads,
-		std::ostream& out_stream,
+		OutputStream& out_stream,
 		ErrorCode& error_code,
 		Progress* progress = nullptr) = 0;
 	// Anything to do at the end of a unit
-	virtual size_t Finalize(std::ostream& out_stream) = 0;
+	virtual size_t Finalize(OutputStream& out_stream) = 0;
 	// 7-zip coder info
 	virtual CoderInfo GetCoderInfo() = 0;
 };

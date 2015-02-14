@@ -28,6 +28,7 @@
 #include <algorithm>
 #include "winlean.h"
 #include "common.h"
+#include "OutputFile.h"
 #include "CharType.h"
 #include "Lzma2Encoder.h"
 #include "CompressorInterface.h"
@@ -48,10 +49,10 @@ public:
 	inline unsigned GetEncodeWeight() const;
 	size_t Compress(const DataBlock& data_block,
 		ThreadPool& threads,
-		std::ostream& out_stream,
+		OutputStream& out_stream,
 		ErrorCode& error_code,
 		Progress* progress = nullptr);
-	size_t Finalize(std::ostream& out_stream);
+	size_t Finalize(OutputStream& out_stream);
 	CoderInfo GetCoderInfo();
 
 private:
@@ -167,7 +168,7 @@ void Lzma2Compressor<MatchTableT>::ThreadFn(void* pwork, int encoder_num)
 template<class MatchTableT>
 size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 	ThreadPool& threads,
-	std::ostream& out_stream,
+	OutputStream& out_stream,
 	ErrorCode& error_code,
 	Progress* progress)
 {
@@ -177,7 +178,7 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 		return 0;
 	}
 	auto saved_exceptions = out_stream.exceptions();
-	out_stream.exceptions(std::ofstream::goodbit);
+	out_stream.exceptions(std::ios_base::goodbit);
 	dictionary_max = std::max(dictionary_max, data_block.end);
 	match_table.BuildTable(data_block, threads, progress);
 	if (g_break) {
@@ -231,7 +232,7 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 		if (!g_break && !out_stream.fail()) {
 			out_stream.write(match_table.GetOutputCharBuffer(encoders[i].start),
 				encoders[i].encoded_size);
-			if (out_stream.fail()) {
+			if (!g_break && out_stream.fail()) {
 				error_code.LoadOsErrorCode();
 				error_code.type = ErrorCode::kWrite;
 			}
@@ -244,7 +245,7 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 }
 
 template<class MatchTableT>
-size_t Lzma2Compressor<MatchTableT>::Finalize(std::ostream& out_stream)
+size_t Lzma2Compressor<MatchTableT>::Finalize(OutputStream& out_stream)
 {
 	out_stream.put(kChunkEof);
 	needed_random_check = false;

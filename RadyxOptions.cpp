@@ -25,10 +25,10 @@
 #ifndef _WIN32
 #include <unistd.h>
 #endif
+#include <thread>
+#include <fstream>
 #include "winlean.h"
 #include "common.h"
-#include <thread>
-#include <iostream>
 #include "RadyxOptions.h"
 #include "Lzma2Encoder.h"
 #include "Path.h"
