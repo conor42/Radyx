@@ -82,8 +82,6 @@ void Container7z::Writer::WriteName(const FsString& name, size_t root)
 		WriteByte(static_cast<uint8_t>(it >> 8));
 	}
 #endif
-	WriteByte(0);
-	WriteByte(0);
 }
 
 void Container7z::Writer::Flush()
@@ -323,6 +321,9 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 		writer.WriteByte(0);
 		for (auto& it : arch_comp.GetFileList()) {
 			writer.WriteName(it.path, it.root);
+			writer.WriteName(it.name, 0);
+			writer.WriteByte(0);
+			writer.WriteByte(0);
 		}
 	}
 	// std::mem_fn is technically unnecessary but there's a bug in VS2013

@@ -77,13 +77,21 @@ _T("\0exe\0dll\0ocx\0vbx\0sfx\0sys\0awx\0com\0out\0");
 
 #ifdef _WIN32
 
-ArchiveCompressor::FileReader::FileReader(Path& path, bool share_deny_none)
+ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_none)
 {
-	const _TCHAR* p = path.c_str();
+	_TCHAR path[MAX_PATH];
+	const _TCHAR* p = path;
 	Path long_path;
-	if (path.length() >= MAX_PATH && !path.IsExtendedLength()) {
-		long_path.SetExtendedLength(path.c_str());
+	if (fi.path.length() + fi.name.length() + 1 >= MAX_PATH) {
+		long_path.reserve(fi.path.length() + fi.name.length() + 5);
+		long_path.SetExtendedLength(fi.path);
+		long_path.append(fi.name);
 		p = long_path.c_str();
+	}
+	else {
+		size_t offs = fi.path.copy(path, MAX_PATH - 1);
+		offs += fi.name.copy(path + offs, MAX_PATH - 1 - offs);
+		path[offs] = '\0';
 	}
 	handle = CreateFile(p,
 		GENERIC_READ,
@@ -116,11 +124,16 @@ void ArchiveCompressor::FileReader::GetAttributes(FileInfo& fi, bool get_creatio
 
 #else
 
-ArchiveCompressor::FileReader::FileReader(Path& path, bool share_deny_none)
-	: fd(open(path.c_str(), O_RDONLY | O_NOATIME))
+ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_none)
+	: fd(-1)
 {
+	char path[PATH_MAX];
+	size_t offs = fi.path.copy(path, PATH_MAX - 1);
+	offs += fi.name.copy(path + offs, PATH_MAX - 1 - offs);
+	path[offs] = '\0';
+	fd = open(path, O_RDONLY | O_NOATIME);
 	if(fd < 0 && O_NOATIME) {
-		fd = open(path.c_str(), O_RDONLY);
+		fd = open(path, O_RDONLY);
 	}
 }
 
@@ -155,9 +168,9 @@ static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const Arch
 	if (first.ext_group != second.ext_group) {
 		return first.ext_group < second.ext_group;
 	}
-	ptrdiff_t comp = first.path.FsCompare(first.ext, std::string::npos, second.path, second.ext, std::string::npos);
+	ptrdiff_t comp = first.name.FsCompare(first.ext, std::string::npos, second.name, second.ext, std::string::npos);
 	if (comp == 0) {
-		return first.path.FsCompare(first.name, std::string::npos, second.path, second.name, std::string::npos) < 0;
+		return first.name.FsCompare(second.name) < 0;
 	}
 	return comp < 0;
 }
@@ -274,13 +287,22 @@ void ArchiveCompressor::EliminateDuplicates()
 {
 	file_list.sort([](const ArchiveCompressor::FileInfo& first, const ArchiveCompressor::FileInfo& second)
 	{
-		return first.path.FsCompare(second.path) < 0;
+		if (&first.path == &second.path) {
+			return first.name.FsCompare(second.name) < 0;
+		}
+		ptrdiff_t comp = first.path.FsCompare(second.path);
+		if (comp == 0) {
+			return first.name.FsCompare(second.name) < 0;
+		}
+		return comp < 0;
 	});
 	auto it = file_list.begin();
 	auto prev = it;
 	for (++it; it != file_list.end();) {
 		auto next = std::next(it);
-		if(it->path.FsCompare(prev->path) == 0) {
+		if ((&it->path == &prev->path || it->path.FsCompare(prev->path) == 0)
+			&& it->name.FsCompare(prev->name) == 0)
+		{
 			file_list.erase(it);
 		}
 		else prev = it;
@@ -297,12 +319,12 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 	OutputStream& out_stream)
 {
 	uint_least64_t initial_size = fi.size;
-	FileReader reader(fi.path, options.share_deny_none);
+	FileReader reader(fi, options.share_deny_none);
 	if (!reader.IsValid()) {
 		const _TCHAR* os_msg = IoException::GetOsMessage();
 		std::unique_lock<std::mutex> lock(progress.GetMutex());
 		progress.RewindLocked();
-		std::Tcerr << Strings::kCannotOpen_ << fi.path.c_str() << " : " << os_msg << std::endl;
+		std::Tcerr << Strings::kCannotOpen_ << fi.path.c_str() << fi.name.c_str() << " : " << os_msg << std::endl;
 		progress.Adjust(-static_cast<int_least64_t>(initial_size));
 		return false;
 	}
@@ -315,7 +337,7 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 	if (!options.quiet_mode) {
 		std::unique_lock<std::mutex> lock(progress.GetMutex());
 		progress.RewindLocked();
-		std::Tcerr << Strings::kAdding_ << (fi.path.c_str() + fi.root) << std::endl;
+		std::Tcerr << Strings::kAdding_ << (fi.path.c_str() + fi.root) << fi.name.c_str() << std::endl;
 	}
 	fi.size = 0;
 	bool did_compress = false;
@@ -334,12 +356,12 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 			// Read failure
 			if (did_compress) {
 				// Can't recover if some of the file was compressed to the output
-				throw IoException(Strings::kUnrecoverableErrorReading, fi.path.c_str());
+				throw IoException(Strings::kUnrecoverableErrorReading, fi.name.c_str());
 			}
 			const _TCHAR* os_msg = IoException::GetOsMessage();
 			std::unique_lock<std::mutex> lock(progress.GetMutex());
 			progress.RewindLocked();
-			std::Tcerr << Strings::kCannotRead_ << fi.path.c_str() << " : " << os_msg << std::endl;
+			std::Tcerr << Strings::kCannotRead_ << fi.path.c_str() << fi.name.c_str() << " : " << os_msg << std::endl;
 			// Delete the data from the unit compressor's buffer
 			unit_comp.RemoveByteCount(static_cast<size_t>(fi.size));
 			// Adjust the total bytes to add
@@ -393,7 +415,7 @@ size_t ArchiveCompressor::GetNameLengthTotal() const
 {
 	size_t total = 0;
 	for (const auto& it : file_list) {
-		total += it.path.length() - it.root + 1;
+		total += it.path.length() - it.root + it.name.length() + 1;
 	}
 	return total;
 }

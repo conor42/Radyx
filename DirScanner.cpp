@@ -32,7 +32,7 @@ DirScanner::DirScanner(const Path& path)
 {
 	if (path.length() >= MAX_PATH && !path.IsExtendedLength()) {
 		Path long_path;
-		long_path.SetExtendedLength(path.c_str());
+		long_path.SetExtendedLength(path);
 		handle = FindFirstFile(long_path.c_str(), &wfd);
 	}
 	else {

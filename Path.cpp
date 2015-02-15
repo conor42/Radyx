@@ -47,10 +47,12 @@ const _TCHAR Path::wildcard_1char = '?';
 
 #ifdef _WIN32
 
-void Path::SetExtendedLength(const _TCHAR* full_path)
+void Path::SetExtendedLength(const Path& full_path)
 {
-	reserve(_tcslen(full_path) + extended_length_spec.size());
-	*this = extended_length_spec.data();
+	if (!full_path.IsExtendedLength()) {
+		reserve(full_path.length() + extended_length_spec.size());
+		*this = extended_length_spec.data();
+	}
 	append(full_path);
 }
 

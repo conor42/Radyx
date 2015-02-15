@@ -21,8 +21,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 #ifndef _WIN32
+#include <fstream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

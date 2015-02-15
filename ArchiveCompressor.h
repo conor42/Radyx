@@ -27,6 +27,7 @@
 #define RADYX_ARCHIVE_COMPRESSOR_H
 
 #include <list>
+#include <unordered_set>
 #include "common.h"
 #include "OutputFile.h"
 #include "Path.h"
@@ -45,8 +46,8 @@ class ArchiveCompressor
 public:
 	struct FileInfo
 	{
-		Path path;
-		size_t name;
+		const Path& path;
+		Path name;
 		size_t root;
 		size_t ext;
 		uint_least64_t size;
@@ -55,16 +56,16 @@ public:
 		OptionalSetting<uint_fast32_t> attributes;
 		unsigned ext_group;
 		Crc32 crc32;
-		FileInfo(const _TCHAR* path_, size_t root_, uint_least64_t size_)
+		FileInfo(const Path& path_, const _TCHAR* name_, size_t root_, uint_least64_t size_)
 			: path(path_),
-			name(path.GetNamePos()),
+			name(name_),
 			root(root_),
-			ext(name + Path::GetExtPos(path.c_str() + name)),
+			ext(Path::GetExtPos(name_)),
 			size(size_),
 			creat_time(0),
 			mod_time(0),
 			attributes(0),
-			ext_group(GetExtensionIndex(path_ + ext)) {}
+			ext_group(GetExtensionIndex(name_ + ext)) {}
 		bool IsEmpty() const { return size == 0; }
 		FileInfo& operator=(const FileInfo&) = delete;
 	};
@@ -91,7 +92,7 @@ public:
 	class FileReader
 	{
 	public:
-		FileReader(Path& path, bool share_deny_none);
+		FileReader(const FileInfo& fi, bool share_deny_none);
 		~FileReader();
 		inline bool IsValid() const;
 		inline bool Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read);
@@ -133,6 +134,7 @@ private:
 
 	std::list<FileInfo> file_list;
 	std::list<DataUnit> unit_list;
+	std::unordered_set<Path, std::hash<FsString>> path_set;
 	uint_least64_t initial_total_bytes;
 
 	ArchiveCompressor(const ArchiveCompressor&) = delete;
@@ -176,7 +178,9 @@ bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count,
 
 void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size)
 {
-	file_list.push_back(FileInfo(path, root, size));
+	size_t name_pos = Path::GetNamePos(path);
+	const Path& path_ref = *path_set.emplace(path, name_pos).first;
+	file_list.push_back(FileInfo(path_ref, path + name_pos, root, size));
 	initial_total_bytes += size;
 }
 

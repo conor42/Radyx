@@ -35,30 +35,30 @@ namespace Radyx {
 class StructuredMatchTable
 {
 private:
-	static const uint_fast32_t kNullLink = MatchTableBuilder::kNullLink;
+	static const UintFast32 kNullLink = MatchTableBuilder::kNullLink;
 	static const unsigned kUnitBits = 2;
 	static const size_t kUnitMask = (1 << kUnitBits) - 1;
 
 	struct MatchUnit
 	{
-		uint_fast32_t links[1 << kUnitBits];
+		UintFast32 links[1 << kUnitBits];
 		uint8_t lengths[1 << kUnitBits];
 	};
 
 public:
-	static const uint_fast32_t kMaxLength = 255;
+	static const UintFast32 kMaxLength = 255;
 	inline StructuredMatchTable(size_t dictionary_size);
-	inline void InitMatchLink(size_t index, uint_fast32_t link);
-	inline uint_fast32_t GetInitialMatchLink(size_t index) const;
-	inline uint_fast32_t GetMatchLink(size_t index) const;
-	inline uint_fast32_t GetMatchLength(size_t index) const;
-	inline uint_fast32_t GetMatchLinkAndLength(size_t index, uint8_t& length) const;
-	inline uint_fast32_t GetMatchLinkAndLength(size_t index, unsigned& length) const;
-	inline void SetMatchLink(size_t index, uint_fast32_t link, uint_fast32_t length);
-	inline void SetMatchLength(size_t index, uint_fast32_t link, uint_fast32_t length);
-	inline void SetMatchLinkAndLength(size_t index, uint_fast32_t link, uint8_t length);
-	inline void SetMatchLinkAndLength(size_t index, uint_fast32_t link, uint_fast32_t length);
-	inline void RestrictMatchLength(size_t index, uint_fast32_t length);
+	inline void InitMatchLink(size_t index, UintFast32 link);
+	inline UintFast32 GetInitialMatchLink(size_t index) const;
+	inline UintFast32 GetMatchLink(size_t index) const;
+	inline UintFast32 GetMatchLength(size_t index) const;
+	inline UintFast32 GetMatchLinkAndLength(size_t index, uint8_t& length) const;
+	inline UintFast32 GetMatchLinkAndLength(size_t index, unsigned& length) const;
+	inline void SetMatchLink(size_t index, UintFast32 link, UintFast32 length);
+	inline void SetMatchLength(size_t index, UintFast32 link, UintFast32 length);
+	inline void SetMatchLinkAndLength(size_t index, UintFast32 link, uint8_t length);
+	inline void SetMatchLinkAndLength(size_t index, UintFast32 link, UintFast32 length);
+	inline void RestrictMatchLength(size_t index, UintFast32 length);
 	inline void SetNull(size_t index);
 	inline bool HaveMatch(size_t index) const;
 	inline MatchUnit* GetBuffer(size_t index);
@@ -76,37 +76,37 @@ StructuredMatchTable::StructuredMatchTable(size_t dictionary_size)
 {
 }
 
-void StructuredMatchTable::InitMatchLink(size_t index, uint_fast32_t link)
+void StructuredMatchTable::InitMatchLink(size_t index, UintFast32 link)
 {
 	match_table[index >> kUnitBits].links[index & kUnitMask] = link;
 }
 
-uint_fast32_t StructuredMatchTable::GetInitialMatchLink(size_t index) const
+UintFast32 StructuredMatchTable::GetInitialMatchLink(size_t index) const
 {
 	return match_table[index >> kUnitBits].links[index & kUnitMask];
 }
 
-uint_fast32_t StructuredMatchTable::GetMatchLink(size_t index) const
+UintFast32 StructuredMatchTable::GetMatchLink(size_t index) const
 {
 	return match_table[index >> kUnitBits].links[index & kUnitMask];
 }
 
-uint_fast32_t StructuredMatchTable::GetMatchLength(size_t index) const
+UintFast32 StructuredMatchTable::GetMatchLength(size_t index) const
 {
 	return match_table[index >> kUnitBits].lengths[index & kUnitMask];
 }
 
-void StructuredMatchTable::SetMatchLink(size_t index, uint_fast32_t link, uint_fast32_t length)
+void StructuredMatchTable::SetMatchLink(size_t index, UintFast32 link, UintFast32 length)
 {
 	match_table[index >> kUnitBits].links[index & kUnitMask] = link;
 }
 
-void StructuredMatchTable::SetMatchLength(size_t index, uint_fast32_t link, uint_fast32_t length)
+void StructuredMatchTable::SetMatchLength(size_t index, UintFast32 link, UintFast32 length)
 {
 	match_table[index >> kUnitBits].lengths[index & kUnitMask] = static_cast<uint8_t>(length);
 }
 
-void StructuredMatchTable::SetMatchLinkAndLength(size_t index, uint_fast32_t link, uint8_t length)
+void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, uint8_t length)
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -114,7 +114,7 @@ void StructuredMatchTable::SetMatchLinkAndLength(size_t index, uint_fast32_t lin
 	match_table[index].lengths[slot] = length;
 }
 
-void StructuredMatchTable::SetMatchLinkAndLength(size_t index, uint_fast32_t link, uint_fast32_t length)
+void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, UintFast32 length)
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -122,7 +122,7 @@ void StructuredMatchTable::SetMatchLinkAndLength(size_t index, uint_fast32_t lin
 	match_table[index].lengths[slot] = static_cast<uint8_t>(length);
 }
 
-uint_fast32_t StructuredMatchTable::GetMatchLinkAndLength(size_t index, uint8_t& length) const
+UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, uint8_t& length) const
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -130,7 +130,7 @@ uint_fast32_t StructuredMatchTable::GetMatchLinkAndLength(size_t index, uint8_t&
 	return match_table[index].links[slot];
 }
 
-uint_fast32_t StructuredMatchTable::GetMatchLinkAndLength(size_t index, unsigned& length) const
+UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, unsigned& length) const
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -138,7 +138,7 @@ uint_fast32_t StructuredMatchTable::GetMatchLinkAndLength(size_t index, unsigned
 	return match_table[index].links[slot];
 }
 
-void StructuredMatchTable::RestrictMatchLength(size_t index, uint_fast32_t length)
+void StructuredMatchTable::RestrictMatchLength(size_t index, UintFast32 length)
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;

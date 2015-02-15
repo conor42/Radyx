@@ -49,8 +49,9 @@ public:
 	Path() {}
 	Path(_TCHAR* s) : FsString(s) {}
 	Path(const _TCHAR* s) : FsString(s) {}
+	Path(const _TCHAR* s, size_t len) : FsString(s, len) {}
 	Path(const FsString& str) : FsString(str) {}
-	void SetExtendedLength(const _TCHAR* full_path);
+	void SetExtendedLength(const Path& full_path);
 	void SetName(const _TCHAR* name);
 	void AppendName(const _TCHAR* name);
 	void AppendExtension(const _TCHAR* ext);
@@ -104,7 +105,7 @@ size_t Path::GetNamePos(const _TCHAR* path)
 {
 	const _TCHAR* name = _tcsrchr(path, separator);
 	if (name != nullptr) {
-		return name - path;
+		return name + 1 - path;
 	}
 #ifdef _WIN32
 	if (path[0] != '\0' && path[1] == drive_specifier) {

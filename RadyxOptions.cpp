@@ -670,11 +670,11 @@ void RadyxOptions::LoadFullPaths()
 			fs.path = full_path.get();
 			fs.path.AppendName(temp.c_str());
 			fs.name = fs.path.GetNamePos();
-			if (root != old_name) {
-				root += fs.path.length() - length;
+			if (fs.root != old_name) {
+				fs.root += fs.path.length() - length;
 			}
 			else {
-				root = fs.name;
+				fs.root = fs.name;
 			}
 	}
 #endif
