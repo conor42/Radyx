@@ -47,6 +47,7 @@ private:
 
 public:
 	static const UintFast32 kMaxLength = 255;
+
 	inline StructuredMatchTable(size_t dictionary_size);
 	inline void InitMatchLink(size_t index, UintFast32 link);
 	inline UintFast32 GetInitialMatchLink(size_t index) const;
@@ -63,6 +64,7 @@ public:
 	inline bool HaveMatch(size_t index) const;
 	inline MatchUnit* GetBuffer(size_t index);
 	inline size_t CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const;
+	static inline size_t GetMemoryUsage(size_t dictionary_size);
 
 private:
 	std::unique_ptr<MatchUnit[]> match_table;
@@ -179,6 +181,11 @@ size_t StructuredMatchTable::CalcMatchBufferSize(size_t block_size, unsigned ext
 	else {
 		return (block_size >> 7) / (extra_thread_count + 1);
 	}
+}
+
+size_t StructuredMatchTable::GetMemoryUsage(size_t dictionary_size)
+{
+	return ((dictionary_size >> kUnitBits) + 1) * sizeof(MatchUnit);
 }
 
 }

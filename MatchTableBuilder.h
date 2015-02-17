@@ -66,7 +66,7 @@ public:
 	MatchTableBuilder() {}
 	// Desired copy behaviour is to construct a new object
 	MatchTableBuilder(const MatchTableBuilder&) {}
-	void AllocateMatchBuffer(const DataBlock& block, size_t match_buffer_size);
+	void AllocateMatchBuffer(size_t match_buffer_size);
 	template<class MatchTableT>
 	void RecurseLists(const DataBlock& block,
 		MatchTableT& match_table,
@@ -76,6 +76,7 @@ public:
 		uint8_t start_depth,
 		uint8_t max_depth);
 	static size_t GetMaxBufferSize(size_t dictionary_size) { return dictionary_size / sizeof(StringMatch); }
+	static size_t GetMemoryUsage(size_t match_buffer_size) { return match_buffer_size * sizeof(StringMatch); }
 
 private:
 	static const unsigned kRadixBitsLarge = 16;
@@ -366,7 +367,7 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 	for (size_t j = stack_base; j < st_index; ++j) {
 		stack[j].count = sub_tails[stack[j].count].list_count;
 	}
-	while (st_index > stack_base) {
+	while (!g_break && st_index > stack_base) {
 		// Pop an item off the stack
 		--st_index;
 		list_count = stack[st_index].count;
@@ -492,11 +493,13 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 			} while (--list_count != 0);
 		}
 	}
-	// Copy everything back, except the last link which never changes
-	for (index = 0; index < count; ++index) {
-		size_t from = match_buffer[index].from;
-		size_t next = match_buffer[index].next;
-		match_table.SetMatchLinkAndLength(from, match_buffer[next].from, match_buffer[index].length);
+	if (!g_break) {
+		// Copy everything back, except the last link which never changes
+		for (index = 0; index < count; ++index) {
+			size_t from = match_buffer[index].from;
+			size_t next = match_buffer[index].next;
+			match_table.SetMatchLinkAndLength(from, match_buffer[next].from, match_buffer[index].length);
+		}
 	}
 }
 
@@ -635,7 +638,7 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 	// Maximum depth at which lists will be sent to the buffered method.
 	UintFast32 max_buffered_depth = max_depth - std::min<UintFast32>(max_depth / 4 + 2, 8u);
 	size_t block_start = block.start;
-	while (st_index > 0) {
+	while (!g_break && st_index > 0) {
 		--st_index;
 		UintFast32 list_count = stack[st_index].count;
 		if (list_count < 2) {

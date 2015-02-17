@@ -54,6 +54,7 @@ public:
 		Progress* progress = nullptr);
 	size_t Finalize(OutputStream& out_stream);
 	CoderInfo GetCoderInfo();
+	size_t GetMemoryUsage(unsigned thread_count) const;
 
 private:
 	struct ThreadArgs
@@ -268,6 +269,14 @@ CoderInfo Lzma2Compressor<MatchTableT>::GetCoderInfo()
 	}
 	return CoderInfo(&dict_size_prop, 1, 0x21, 1, 1);
 }
+
+template<class MatchTableT>
+size_t Lzma2Compressor<MatchTableT>::GetMemoryUsage(unsigned thread_count) const
+{
+	return match_table.GetMemoryUsage(thread_count) +
+		Lzma2Encoder::GetMemoryUsage(options) * thread_count;
+}
+
 
 }
 

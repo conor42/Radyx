@@ -43,10 +43,12 @@
 using namespace Radyx;
 
 static const char kProgName[] = "Radyx";
-static const char kVersion[] = "0.9 beta";
+static const char kVersion[] = "0.9.1 beta";
 static const char kCopyright[] = "  Copyright 2015 Conor McCarthy";
-static const char kReleaseDate[] = "  2015-02-10";
+static const char kReleaseDate[] = "  2015-02-18";
 static const char kLicense[] = "This software has NO WARRANTY and is released under the\nGNU General Public License: www.gnu.org/licenses/gpl.html\n";
+
+static const uint_least64_t kMinMemory = 512 * 1024 * 1024;
 
 volatile bool g_break = false;
 
@@ -67,7 +69,7 @@ void PrintBanner()
 		<< std::endl;
 }
 
-bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, OutputFile& file_stream)
+bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, OutputFile& file_stream, uint_least64_t avail_mem)
 {
 	bool is_dev_null = archive_path.IsDevNull();
 #ifdef _WIN32
@@ -81,11 +83,16 @@ bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, Out
 		std::Tcerr << Strings::kErrorCol_ << Strings::kArchiveFileExists << std::endl;
 		throw std::invalid_argument("");
 	}
-	file_stream.open(archive_path.c_str()
-#ifndef _WIN32
-		, std::ios_base::trunc | std::ios_base::binary
+#ifdef _WIN32
+	bool no_caching = false;
+	if (avail_mem != 0) {
+		no_caching = (avail_mem < options.lzma2.dictionary_size ||
+			(avail_mem - options.lzma2.dictionary_size < kMinMemory));
+	}
+	file_stream.open(archive_path.c_str(), no_caching);
+#else
+	file_stream.open(archive_path.c_str(), std::ios_base::trunc | std::ios_base::binary);
 #endif
-		);
 	if (file_stream.fail()) {
 		throw IoException(Strings::kCannotCreateArchive, archive_path.c_str());
 	}
@@ -101,6 +108,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	try {
 		RadyxOptions options(argc, argv, archive_path);
 		ThreadPool threads(options.thread_count - 1);
+		uint_least64_t avail_mem = 0;
+#ifdef _WIN32
+		MEMORYSTATUSEX msx;
+		msx.dwLength = sizeof(msx);
+		if (GlobalMemoryStatusEx(&msx) == TRUE) {
+			avail_mem = msx.ullAvailPhys;
+		}
+#endif
 		std::unique_ptr<CompressorInterface> compressor;
 		size_t dictionary_size = options.lzma2.dictionary_size;
 		if (dictionary_size > PackedMatchTable::kMaxDictionary
@@ -128,8 +143,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			std::Tcerr << Strings::kNoFilesFound << std::endl;
 			return EXIT_SUCCESS;
 		}
+		avail_mem -= compressor->GetMemoryUsage(options.thread_count) + unit_comp.GetMemoryUsage();
 		OutputFile out_stream;
-		created_file = OpenOutputStream(archive_path, options, out_stream);
+		created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
 		Container7z::ReserveSignatureHeader(out_stream);
 #ifdef _WIN32
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);

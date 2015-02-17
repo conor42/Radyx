@@ -38,25 +38,18 @@
 
 namespace Radyx {
 
-static bool CompareFileSpec(const RadyxOptions::FileSpec& first, const RadyxOptions::FileSpec& second)
-{
-	if (first.name != second.name) {
-		return first.name < second.name;
-	}
-	return first.path.FsCompare(0, first.name, second.path, 0, first.name) < 0;
-}
-
 RadyxOptions::FileSpec::FileSpec(const _TCHAR* path_, Recurse recurse_)
 	: path(path_),
 	root(0),
 	name(0),
-	recurse(recurse_ == kRecurseAll || (recurse_ == kRecurseWildcard && Path::IsWildcard(path.c_str() + name)))
+	recurse(false)
 {
 	path.ConvertSeparators();
 	name = path.GetNamePos();
 	if (!path.IsPureRelativePath()) {
 		root = name;
 	}
+	recurse = recurse_ == kRecurseAll || (recurse_ == kRecurseWildcard && Path::IsWildcard(path.c_str() + name));
 }
 
 void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path, unsigned length)
@@ -168,7 +161,6 @@ RadyxOptions::RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path)
 		thread_count = (hardware_threads != 0) ? hardware_threads : 2;
 	}
 	LoadFullPaths();
-	file_specs.sort(CompareFileSpec);
 	lzma2.LoadCompressLevel();
 }
 
@@ -689,7 +681,8 @@ bool RadyxOptions::SearchExclusions(const Path& path, size_t root, bool is_root)
 				// Exclusion contains a path
 				if (root + it.name <= path.length() &&
 					path.FsCompare(root, root + it.name, it.path, 0, it.name) == 0 &&
-					Path::MatchFileSpec(path.c_str() + path.GetNamePos(), it.path.c_str() + it.name)) {
+					Path::MatchFileSpec(path.c_str() + path.GetNamePos(), it.path.c_str() + it.name))
+				{
 					return true;
 				}
 			}
@@ -704,8 +697,15 @@ bool RadyxOptions::SearchExclusions(const Path& path, size_t root, bool is_root)
 	return false;
 }
 
-void RadyxOptions::GetFiles(ArchiveCompressor& arch_comp) const
+void RadyxOptions::GetFiles(ArchiveCompressor& arch_comp)
 {
+	file_specs.sort([](const RadyxOptions::FileSpec& first, const RadyxOptions::FileSpec& second)
+	{
+		if (first.name != second.name) {
+			return first.name < second.name;
+		}
+		return first.path.FsCompare(0, first.name, second.path, 0, first.name) < 0;
+	});
 	for (auto it = file_specs.cbegin(); it != file_specs.cend();) {
 		auto end = it;
 		// Find all file specs in the same dir

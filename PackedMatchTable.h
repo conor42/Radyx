@@ -41,6 +41,7 @@ private:
 public:
 	static const UintFast32 kMaxLength = (1 << kLengthBits) - 1;
 	static const size_t kMaxDictionary = size_t(1) << kLinkBits;
+
 	inline PackedMatchTable(size_t dictionary_size);
 	inline void InitMatchLink(size_t index, UintFast32 link);
 	inline UintFast32 GetInitialMatchLink(size_t index) const;
@@ -57,6 +58,7 @@ public:
 	void SetNull(size_t index) { match_table[index] = kNullLink; }
 	bool HaveMatch(size_t index) const { return match_table[index] != kNullLink; }
 	UintFast32* GetBuffer(size_t index) { return match_table.get() + index; }
+	static inline size_t GetMemoryUsage(size_t dictionary_size) { return dictionary_size * sizeof(UintFast32); }
 
 private:
 	std::unique_ptr<UintFast32[]> match_table;

@@ -68,6 +68,8 @@ public:
 	// User input constraints. The actual max size is 2 bytes less than 2^32 but we allow the user to set 2^32.
 	static size_t GetUserDictionarySizeMin() { return UINT32_C(1) << kDicLogSizeMin; }
 	static size_t GetUserDictionarySizeMax();
+	static size_t GetMemoryUsage(const Lzma2Options& options);
+
 private:
 	static const unsigned kNumReps = 4;
 	static const unsigned kNumStates = 12;

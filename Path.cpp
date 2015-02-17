@@ -102,15 +102,7 @@ bool Path::MatchFileSpec(const _TCHAR* name, const _TCHAR* spec)
 
 ptrdiff_t Path::FsCompare(size_t pos, size_t end, const Path& second, size_t pos_2, size_t end_2) const
 {
-	end = std::min(length(), end);
-	end_2 = std::min(second.length(), end_2);
-	size_t len = end - pos;
-	size_t len_2 = end_2 - pos_2;
-	int comp = strncmp(c_str() + pos, second.c_str() + pos_2, std::min(len, len_2));
-	if(comp != 0) {
-		return comp;
-	}
-	return len - len_2;
+	return compare(pos, end - pos, second, pos_2, end_2 - pos_2);
 }
 
 void Path::ConvertSeparators()
@@ -154,7 +146,7 @@ bool Path::IsPureRelativePath() const
 		return false;
 	}
 #ifdef _WIN32
-	if (length() > 1 && at(1) == drive_specifier) {
+	if (length() > 1 && operator[](1) == drive_specifier) {
 		return false;
 	}
 #endif

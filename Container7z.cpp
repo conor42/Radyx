@@ -320,7 +320,7 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 		writer.WriteCompressedUint64(names_byte_count + 1);
 		writer.WriteByte(0);
 		for (auto& it : arch_comp.GetFileList()) {
-			writer.WriteName(it.path, it.root);
+			writer.WriteName(it.dir, it.root);
 			writer.WriteName(it.name, 0);
 			writer.WriteByte(0);
 			writer.WriteByte(0);

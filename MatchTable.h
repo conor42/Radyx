@@ -52,6 +52,7 @@ public:
 		unsigned random_filter_ = 0);
 	~MatchTable();
 	size_t GetDictionarySize() const { return dictionary_size; }
+	size_t GetMemoryUsage(unsigned thread_count) const;
 	uint8_t* GetOutputByteBuffer(size_t index) {
 		return reinterpret_cast<uint8_t*>(match_table.GetBuffer(index)); }
 	char* GetOutputCharBuffer(size_t index) {
@@ -168,6 +169,15 @@ MatchTable<MatchTableT>::MatchTable(size_t dictionary_size_,
 }
 
 template<class MatchTableT>
+size_t MatchTable<MatchTableT>::GetMemoryUsage(unsigned thread_count) const
+{
+	size_t buf_size = match_buffer_size.IsSet() ?
+		match_buffer_size : match_table.CalcMatchBufferSize(dictionary_size, thread_count - 1);
+	return match_table.GetMemoryUsage(dictionary_size) +
+		MatchTableBuilder::GetMemoryUsage(buf_size) * thread_count;
+}
+
+template<class MatchTableT>
 MatchTable<MatchTableT>::~MatchTable()
 {
 #ifdef RADYX_STATS
@@ -242,7 +252,7 @@ void MatchTable<MatchTableT>::BuildTable(const DataBlock& block, ThreadPool& thr
 #endif
 	}
 	for (unsigned i = 0; i < thread_count; ++i) {
-		table_builders[i].AllocateMatchBuffer(block, match_buffer_size);
+		table_builders[i].AllocateMatchBuffer(match_buffer_size);
 	}
 	// Create an object for allocating lists to threads
 	MatchTableBuilder::HeadIndexes head_indexes(head_table.get(), table_size, block.end, thread_count);

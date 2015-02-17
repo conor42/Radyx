@@ -37,6 +37,7 @@ public:
 	static const _TCHAR kAdding_[];
 	static const _TCHAR kCannotOpen_[];
 	static const _TCHAR kCannotRead_[];
+	static const _TCHAR kWarningsForFiles[];
 	static const char kFileIoError[];
 	static const _TCHAR kWarningCouldntOpen_[];
 	static const _TCHAR kNoFilesFound[];

@@ -34,6 +34,7 @@ const _TCHAR Strings::kSearching[] = _T("Searching...");
 const _TCHAR Strings::kAdding_[] = _T("Adding ");
 const _TCHAR Strings::kCannotOpen_[] = _T("Cannot open ");
 const _TCHAR Strings::kCannotRead_[] = _T("Cannot read ");
+const _TCHAR Strings::kWarningsForFiles[] = _T("Warnings for files:");
 const char Strings::kFileIoError[] = "File I/O error.";
 const _TCHAR Strings::kWarningCouldntOpen_[] = _T("Warning: Could not open ");
 const _TCHAR Strings::kNoFilesFound[] = _T("No files found.");

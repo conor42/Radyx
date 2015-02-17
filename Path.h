@@ -94,7 +94,7 @@ size_t Path::GetNamePos() const
 	size_t name_pos = find_last_of(separator);
 	if (name_pos != npos) return name_pos + 1;
 #ifdef _WIN32
-	if (length() > 1 && at(1) == drive_specifier) {
+	if (length() > 1 && operator[](1) == drive_specifier) {
 		return 2;
 	}
 #endif

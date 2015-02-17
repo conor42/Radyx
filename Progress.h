@@ -98,8 +98,10 @@ void Progress::Rewind()
 
 void Progress::Erase()
 {
-	Rewind();
-	std::Tcerr << "     \b\b\b\b\b";
+	if (!g_break) {
+		Rewind();
+		std::Tcerr << "     \b\b\b\b\b";
+	}
 }
 
 }

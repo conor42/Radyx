@@ -155,6 +155,12 @@ size_t Lzma2Encoder::GetDictionarySizeMax()
 	}
 }
 
+size_t Lzma2Encoder::GetMemoryUsage(const Lzma2Options& options)
+{
+	return sizeof(Lzma2Encoder) +
+		(options.encoder_mode != Lzma2Options::kFastMode) ? sizeof(OptimalNode) * kOptimizerBufferSize : 0;
+}
+
 void Lzma2Encoder::Reset(size_t max_distance)
 {
 	rc.Reset();

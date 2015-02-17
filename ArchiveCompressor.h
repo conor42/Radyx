@@ -46,7 +46,7 @@ class ArchiveCompressor
 public:
 	struct FileInfo
 	{
-		const Path& path;
+		const Path& dir;
 		Path name;
 		size_t root;
 		size_t ext;
@@ -54,10 +54,10 @@ public:
 		OptionalSetting<uint_least64_t> creat_time;
 		OptionalSetting<uint_least64_t> mod_time;
 		OptionalSetting<uint_fast32_t> attributes;
-		unsigned ext_group;
+		unsigned ext_index;
 		Crc32 crc32;
 		FileInfo(const Path& path_, const _TCHAR* name_, size_t root_, uint_least64_t size_)
-			: path(path_),
+			: dir(path_),
 			name(name_),
 			root(root_),
 			ext(Path::GetExtPos(name_)),
@@ -65,7 +65,7 @@ public:
 			creat_time(0),
 			mod_time(0),
 			attributes(0),
-			ext_group(GetExtensionIndex(name_ + ext)) {}
+			ext_index(GetExtensionIndex(name_ + ext)) {}
 		bool IsEmpty() const { return size == 0; }
 		FileInfo& operator=(const FileInfo&) = delete;
 	};
@@ -135,6 +135,7 @@ private:
 	std::list<FileInfo> file_list;
 	std::list<DataUnit> unit_list;
 	std::unordered_set<Path, std::hash<FsString>> path_set;
+	std::list<FsString> file_warnings;
 	uint_least64_t initial_total_bytes;
 
 	ArchiveCompressor(const ArchiveCompressor&) = delete;
@@ -179,8 +180,8 @@ bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count,
 void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size)
 {
 	size_t name_pos = Path::GetNamePos(path);
-	const Path& path_ref = *path_set.emplace(path, name_pos).first;
-	file_list.push_back(FileInfo(path_ref, path + name_pos, root, size));
+	const Path& dir = *path_set.emplace(path, name_pos).first;
+	file_list.push_back(FileInfo(dir, path + name_pos, root, size));
 	initial_total_bytes += size;
 }
 

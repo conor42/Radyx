@@ -27,7 +27,7 @@
 
 namespace Radyx {
 
-void MatchTableBuilder::AllocateMatchBuffer(const DataBlock& block, size_t match_buffer_size)
+void MatchTableBuilder::AllocateMatchBuffer(size_t match_buffer_size)
 {
 	if (match_buffer_.size() < match_buffer_size) {
 		match_buffer_.resize(match_buffer_size);

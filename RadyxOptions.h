@@ -70,7 +70,7 @@ public:
 	};
 
 	RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path);
-	void GetFiles(ArchiveCompressor& arch_comp) const;
+	void GetFiles(ArchiveCompressor& arch_comp);
 
 	std::list<FileSpec> file_specs;
 	std::list<FileSpec> exclusions;

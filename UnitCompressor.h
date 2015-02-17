@@ -57,6 +57,7 @@ public:
 	size_t GetPackSize() const { return pack_size; }
 	bool UsedBcj() const { return bcj.get() != nullptr; }
 	CoderInfo GetBcjCoderInfo() const { return bcj->GetCoderInfo(); }
+	size_t GetMemoryUsage() const { return dictionary_size * (1 + async_read); }
 
 private:
 	struct ThreadArgs

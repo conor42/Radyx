@@ -45,7 +45,7 @@ OutputFile::OutputFile(const _TCHAR* filename)
 	open(filename);
 }
 
-void OutputFile::open(const _TCHAR* filename)
+void OutputFile::open(const _TCHAR* filename, bool no_caching)
 {
 	if (handle != INVALID_HANDLE_VALUE) {
 		CloseHandle(handle);
@@ -55,7 +55,7 @@ void OutputFile::open(const _TCHAR* filename)
 		FILE_SHARE_READ,
 		NULL,
 		CREATE_NEW,
-		FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_WRITE_THROUGH,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN | (no_caching ? FILE_FLAG_WRITE_THROUGH : 0),
 		NULL);
 	if (handle == INVALID_HANDLE_VALUE) {
 		AddError(std::ios_base::failbit);
@@ -69,11 +69,11 @@ OutputFile& OutputFile::put(char c)
 
 OutputFile& OutputFile::write(const char* s, size_t n)
 {
-	while (n != 0) {
+	while (!g_break && n != 0) {
 		// Avoid possible errors from large writes over a network in WinXP
 		DWORD to_write = static_cast<DWORD>(std::min(n, size_t(32) * 1024 * 1024 - 32768));
 		DWORD written;
-		if (WriteFile(handle, s, to_write, &written, NULL) == FALSE || g_break) {
+		if (WriteFile(handle, s, to_write, &written, NULL) == FALSE) {
 			AddError(std::ios_base::badbit);
 			break;
 		}

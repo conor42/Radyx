@@ -37,7 +37,7 @@ public:
 	OutputFile();
 	explicit OutputFile(const _TCHAR* filename);
 	virtual ~OutputFile();
-	void open(const _TCHAR* filename);
+	void open(const _TCHAR* filename, bool no_caching = false);
 	OutputFile& put(char c);
 	OutputFile& write(const char* s, size_t n);
 	uint_least64_t tellp();
