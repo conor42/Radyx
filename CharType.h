@@ -48,9 +48,7 @@ namespace Radyx {
 #define _tcslen strlen
 #define _tcschr strchr
 #define _tcsrchr strrchr
-#define _tcscmp strcmp
 #define _tcsicmp strcasecmp
-#define _tcsncmp strncmp
 #define _tcstoul strtoul
 #define _tremove remove
 #define _T(x) x

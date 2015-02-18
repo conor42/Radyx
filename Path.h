@@ -115,28 +115,14 @@ size_t Path::GetNamePos(const _TCHAR* path)
 	return 0;
 }
 
-#ifdef _UNICODE
-
 size_t Path::GetExtPos(const _TCHAR* name)
 {
-	const _TCHAR* ext = wcsrchr(name, '.');
+	const _TCHAR* ext = _tcsrchr(name, '.');
 	if (ext == nullptr) {
-		return wcslen(name);
+		return _tcslen(name);
 	}
 	return ext + 1 - name;
 }
-
-#else
-
-size_t Path::GetExtPos(const _TCHAR* name)
-{
-	const _TCHAR* ext = strrchr(name, '.');
-	if (ext == nullptr) {
-		return strlen(name);
-	}
-	return ext + 1 - name;
-}
-#endif // _UNICODE
 
 bool Path::IsRelativeAlias(const _TCHAR* name)
 {

@@ -778,7 +778,12 @@ void RadyxOptions::SearchDir(Path& dir,
 		}
 		else {
 			if (all_match || IsMatch(it_first, it_end, name, is_root)) {
-				arch_comp.Add(dir.c_str(), it_first->root, scan.GetFileSize());
+#ifdef _WIN32
+				uint_least64_t size = scan.GetFileSize();
+#else
+				uint_least64_t size = 0;
+#endif
+				arch_comp.Add(dir.c_str(), it_first->root, size);
 			}
 		}
 	} while (!g_break && scan.Next());

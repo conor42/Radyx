@@ -35,6 +35,7 @@ public:
 	void operator=(const OptionalSetting<T>& right);
 	void operator=(T value_) { Set(value_); }
 	inline void Set(T value_);
+	inline T Get() const { return value; }
 	bool IsSet() const { return is_set; }
 	operator T() const { return value; }
 private:

@@ -134,9 +134,9 @@ ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_no
 		size_t offs = fi.dir.copy(path.data(), path.size() - 1);
 		offs += fi.name.copy(&path[offs], path.size() - 1 - offs);
 		path[offs] = '\0';
-		fd = open(path, O_RDONLY | O_NOATIME);
+		fd = open(path.data(), O_RDONLY | O_NOATIME);
 		if(fd < 0 && O_NOATIME) {
-			fd = open(path, O_RDONLY);
+			fd = open(path.data(), O_RDONLY);
 		}
 	}
 }
@@ -165,6 +165,20 @@ ArchiveCompressor::ArchiveCompressor()
 	: initial_total_bytes(0)
 {
 	assert(GetExtensionIndex(_T("out")) != 0);
+}
+
+void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size)
+{
+#ifndef _WIN32
+	struct stat s;
+	if (stat(path, &s) == 0) {
+		size = s.st_size;
+	}
+#endif
+	size_t name_pos = Path::GetNamePos(path);
+	const Path& dir = *path_set.emplace(path, name_pos).first;
+	file_list.push_back(FileInfo(dir, path + name_pos, root, size));
+	initial_total_bytes += size;
 }
 
 static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const ArchiveCompressor::FileInfo& second)
@@ -275,8 +289,8 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 	progress.Erase();
 	unit_comp.CheckError();
 	// Warn if any files couldn't be read
-	if (!g_break && file_warnings.size() > 0) {
-		if (!options.quiet_mode && file_list.size() > 0 && file_warnings.size() + file_list.size() > 25) {
+	if (!g_break && !file_warnings.empty()) {
+		if (!options.quiet_mode && !file_list.empty()) {
 			std::Tcerr << std::endl << Strings::kWarningsForFiles << std::endl;
 			for (auto& msg : file_warnings) {
 				std::Tcerr << msg << std::endl;

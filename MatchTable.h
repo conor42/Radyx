@@ -172,7 +172,7 @@ template<class MatchTableT>
 size_t MatchTable<MatchTableT>::GetMemoryUsage(unsigned thread_count) const
 {
 	size_t buf_size = match_buffer_size.IsSet() ?
-		match_buffer_size : match_table.CalcMatchBufferSize(dictionary_size, thread_count - 1);
+		match_buffer_size.Get() : match_table.CalcMatchBufferSize(dictionary_size, thread_count - 1);
 	return match_table.GetMemoryUsage(dictionary_size) +
 		MatchTableBuilder::GetMemoryUsage(buf_size) * thread_count;
 }

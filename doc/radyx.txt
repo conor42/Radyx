@@ -1,5 +1,5 @@
 ===============================================================================
-    Radyx 0.9 Command Line
+    Radyx 0.9.1 Command Line
 ===============================================================================
 
 The command line format is 7-zip compatible wherever possible:
@@ -46,9 +46,8 @@ The following switches are recognized:
    the Intel Atom require a small value (4 kb - 16 kb) for fastest performance.
 
 -md={N}[b|k|m|g]  (256 kb - 4 Gb)
-   Set the dictionary size. Default is 32 Mb.
-   *** Note: dictionary sizes above 680 Mb are untested in version 0.9. Please
-   report success if you try a larger size.
+   Set the dictionary size. Default is 32 Mb. A maximum dictionary size of
+   1/16th of the total RAM installed in the computer is recommended.
 
 -mds={N}[b|k]  (0 - 64 kb)
    Set the secondary dictionary size for hybrid mode. Default is 4 kb.

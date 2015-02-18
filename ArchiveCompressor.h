@@ -108,7 +108,7 @@ public:
 	};
 
 	ArchiveCompressor();
-	inline void Add(const _TCHAR* path, size_t root, uint_least64_t size);
+	void Add(const _TCHAR* path, size_t root, uint_least64_t size);
 	uint_least64_t Compress(UnitCompressor& unit_comp,
 		CompressorInterface& compressor,
 		const RadyxOptions& options,
@@ -176,14 +176,6 @@ bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count,
 }
 
 #endif
-
-void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size)
-{
-	size_t name_pos = Path::GetNamePos(path);
-	const Path& dir = *path_set.emplace(path, name_pos).first;
-	file_list.push_back(FileInfo(dir, path + name_pos, root, size));
-	initial_total_bytes += size;
-}
 
 }
 #endif // RADYX_ARCHIVE_COMPRESSOR_H

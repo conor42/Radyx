@@ -47,8 +47,10 @@ public:
 	inline bool NotFound() const;
 	inline const _TCHAR* GetName() const;
 	inline bool IsDirectory() const;
-	inline uint_least64_t GetFileSize() const;
 	inline bool Next();
+#ifdef _WIN32
+	inline uint_least64_t GetFileSize() const;
+#endif
 
 private:
 #ifdef _WIN32
@@ -105,15 +107,6 @@ const _TCHAR* DirScanner::GetName() const
 bool DirScanner::IsDirectory() const
 {
 	return ent->d_type == DT_DIR;
-}
-
-uint_least64_t DirScanner::GetFileSize() const
-{
-	struct stat s;
-	if (stat(ent->d_name, &s) == 0) {
-		return s.st_size;
-	}
-	return 0;
 }
 
 bool DirScanner::Next()
