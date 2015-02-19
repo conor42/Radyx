@@ -15,177 +15,177 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\ArchiveCompressor.h">
+    <ClInclude Include="..\..\ArchiveCompressor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\AsyncWriter.h">
+    <ClInclude Include="..\..\AsyncWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\CompressedUint64.h">
+    <ClInclude Include="..\..\BcjTransform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\CompressorInterface.h">
+    <ClInclude Include="..\..\BcjX86.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Container7z.h">
+    <ClInclude Include="..\..\CharType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Crc32.h">
+    <ClInclude Include="..\..\CoderInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DataBlock.h">
+    <ClInclude Include="..\..\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\FlagTable.h">
+    <ClInclude Include="..\..\CompressedUint64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Lzma2Compressor.h">
+    <ClInclude Include="..\..\CompressorInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Lzma2Encoder.h">
+    <ClInclude Include="..\..\Container7z.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Lzma2Options.h">
+    <ClInclude Include="..\..\Crc32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\MatchTable.h">
+    <ClInclude Include="..\..\DataBlock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\MatchTableBuilder.h">
+    <ClInclude Include="..\..\DirScanner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\OptionalSetting.h">
+    <ClInclude Include="..\..\ErrorCode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\PackedMatchTable.h">
+    <ClInclude Include="..\..\FlagTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Path.h">
+    <ClInclude Include="..\..\HashChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RadyxOptions.h">
+    <ClInclude Include="..\..\IoException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RangeEncoder.h">
+    <ClInclude Include="..\..\Lzma2Compressor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\StructuredMatchTable.h">
+    <ClInclude Include="..\..\Lzma2Encoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ThreadPool.h">
+    <ClInclude Include="..\..\Lzma2Options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\UnitCompressor.h">
+    <ClInclude Include="..\..\MatchResult.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\common.h">
+    <ClInclude Include="..\..\MatchTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\winlean.h">
+    <ClInclude Include="..\..\MatchTableBuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Progress.h">
+    <ClInclude Include="..\..\OptionalSetting.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\CharType.h">
+    <ClInclude Include="..\..\OutputFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DirScanner.h">
+    <ClInclude Include="..\..\PackedMatchTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\BcjTransform.h">
+    <ClInclude Include="..\..\Path.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\BcjX86.h">
+    <ClInclude Include="..\..\Progress.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\CoderInfo.h">
+    <ClInclude Include="..\..\RadyxOptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\IoException.h">
+    <ClInclude Include="..\..\RangeEncoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ErrorCode.h">
+    <ClInclude Include="..\..\Strings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Strings.h">
+    <ClInclude Include="..\..\StructuredMatchTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\MatchResult.h">
+    <ClInclude Include="..\..\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\HashChain.h">
+    <ClInclude Include="..\..\UnitCompressor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\OutputFile.h">
+    <ClInclude Include="..\..\winlean.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Radyx.cpp">
+    <ClCompile Include="..\..\ArchiveCompressor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ArchiveCompressor.cpp">
+    <ClCompile Include="..\..\AsyncWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\AsyncWriter.cpp">
+    <ClCompile Include="..\..\BcjX86.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\CompressedUint64.cpp">
+    <ClCompile Include="..\..\CoderInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Container7z.cpp">
+    <ClCompile Include="..\..\CompressedUint64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Crc32.cpp">
+    <ClCompile Include="..\..\Container7z.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Lzma2Encoder.cpp">
+    <ClCompile Include="..\..\Crc32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\MatchTable.cpp">
+    <ClCompile Include="..\..\DirScanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\MatchTableBuilder.cpp">
+    <ClCompile Include="..\..\IoException.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Path.cpp">
+    <ClCompile Include="..\..\Lzma2Encoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RadyxOptions.cpp">
+    <ClCompile Include="..\..\Lzma2Options.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RangeEncoder.cpp">
+    <ClCompile Include="..\..\MatchTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ThreadPool.cpp">
+    <ClCompile Include="..\..\MatchTableBuilder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\UnitCompressor.cpp">
+    <ClCompile Include="..\..\OutputFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Progress.cpp">
+    <ClCompile Include="..\..\Path.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\DirScanner.cpp">
+    <ClCompile Include="..\..\Progress.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\BcjX86.cpp">
+    <ClCompile Include="..\..\RadyxOptions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\IoException.cpp">
+    <ClCompile Include="..\..\RangeEncoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Strings.cpp">
+    <ClCompile Include="..\..\Strings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\CoderInfo.cpp">
+    <ClCompile Include="..\..\ThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Lzma2Options.cpp">
+    <ClCompile Include="..\..\UnitCompressor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\OutputFile.cpp">
+    <ClCompile Include="..\Radyx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
