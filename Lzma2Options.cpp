@@ -29,10 +29,10 @@ namespace Radyx {
 
 const uint8_t Lzma2Options::kDicSizeTable[10] = { 18, 18, 20, 22, 24, 25, 25, 26, 26, 27 };
 
-void Lzma2Options::LoadCompressLevel()
+void Lzma2Options::LoadCompressLevel() noexcept
 {
 	if (!dictionary_size.IsSet()) {
-		dictionary_size = UINT32_C(1) << kDicSizeTable[compress_level];
+		dictionary_size = size_t(1) << kDicSizeTable[compress_level];
 	}
 	if (!fast_length.IsSet()) {
 		fast_length = (compress_level > 5) ? 64 : 32;

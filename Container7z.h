@@ -42,12 +42,12 @@ namespace Radyx {
 class Container7z
 {
 public:
-	static void ReserveSignatureHeader(OutputStream& out_stream);
+	static void ReserveSignatureHeader(OutputFile& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
 		UnitCompressor& unit_comp,
 		CompressorInterface& compressor,
 		ThreadPool& threads,
-		OutputStream& out_stream);
+		OutputFile& out_stream);
 
 private:
 	enum PropertyId
@@ -82,12 +82,14 @@ private:
 	class Writer
 	{
 	public:
-		Writer(UnitCompressor& unit_comp_, CompressorInterface* compressor_, ThreadPool& threads_, OutputStream& out_stream_)
+		Writer(UnitCompressor& unit_comp_, CompressorInterface* compressor_, ThreadPool& threads_, OutputFile& out_stream_)
 			: unit_comp(unit_comp_),
 			compressor(compressor_),
 			threads(threads_),
 			out_stream(out_stream_) {}
-		~Writer() { Flush(); }
+		~Writer() {
+			Flush();
+		}
 		inline void WriteByte(uint8_t byte);
 		inline void WriteBytes(const uint8_t* buf, size_t count);
 		inline void WriteUint32(uint_fast32_t value);
@@ -95,28 +97,35 @@ private:
 		inline void WriteCompressedUint64(uint_least64_t value);
 		void WriteName(const FsString& name, size_t root);
 		void Flush();
-		uint_fast32_t GetCrc32() const { return crc32; }
+		uint_fast32_t GetCrc32() const {
+			return crc32;
+		}
 
 	private:
 		UnitCompressor& unit_comp;
 		CompressorInterface* compressor;
 		ThreadPool& threads;
-		OutputStream& out_stream;
+		OutputFile& out_stream;
 		Crc32 crc32;
 
 		Writer(const Writer&) = delete;
 		Writer& operator=(const Writer&) = delete;
+		Writer(Writer&&) = delete;
+		Writer& operator=(Writer&&) = delete;
 	};
 
 	class BoolWriter
 	{
 	public:
 		BoolWriter(Writer& writer_) : writer(writer_), mask(0x80), value(0) {}
-		~BoolWriter() { Flush(); }
+		~BoolWriter() {
+			Flush();
+		}
 		inline void Write(bool b);
 		inline void Flush();
 		static inline size_t GetByteCount(size_t bool_count) {
-			return (bool_count >> 3) + ((bool_count & 7) != 0); }
+			return (bool_count >> 3) + ((bool_count & 7) != 0);
+		}
 
 	private:
 		Writer& writer;
@@ -125,6 +134,8 @@ private:
 
 		BoolWriter(const BoolWriter&) = delete;
 		BoolWriter& operator=(const BoolWriter&) = delete;
+		BoolWriter(BoolWriter&&) = delete;
+		BoolWriter& operator=(BoolWriter&&) = delete;
 	};
 
 	static const uint8_t kMajorVersion = 0;
@@ -151,18 +162,18 @@ private:
 		UnitCompressor& unit_comp,
 		CompressorInterface &compressor,
 		ThreadPool& threads,
-		OutputStream& out_stream);
+		OutputFile& out_stream);
 	static uint_fast32_t WriteHeaderHeader(UnitCompressor& unit_comp,
 		CompressorInterface& compressor,
 		uint_least64_t header_offset,
 		uint_least64_t header_pack_size,
 		uint_least64_t header_unpack_size,
 		ThreadPool& threads,
-		OutputStream& out_stream);
+		OutputFile& out_stream);
 	static void WriteSignatureHeader(uint_least64_t header_offset,
 		uint_least64_t header_size,
 		uint_fast32_t crc32,
-		OutputStream& out_stream);
+		OutputFile& out_stream);
 	static void WriteUint32(uint_fast32_t value, uint8_t* buffer);
 	static void WriteUint64(uint_least64_t value, uint8_t* buffer);
 };

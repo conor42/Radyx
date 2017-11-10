@@ -40,13 +40,27 @@ class MatchCollection
 {
 public:
 	MatchCollection() : count(0) {}
-	void push_back(const MatchResult& match) { matches[count++] = match; }
-	MatchResult& back() { return matches[count - 1]; }
-	size_t size() const { return count; }
-	MatchResult& operator[](size_t index) { return matches[index]; }
-	unsigned GetMaxLength() const { return matches[count - 1].length; }
-	void Set(const MatchResult& match) { matches[0] = match; count = 1; }
-	void Clear() { count = 0; }
+	void push_back(const MatchResult& match) noexcept {
+		matches[count++] = match;
+	}
+	MatchResult& back() noexcept {
+		return matches[count - 1];
+	}
+	size_t size() const noexcept {
+		return count;
+	}
+	MatchResult& operator[](size_t index) noexcept {
+		return matches[index];
+	}
+	unsigned GetMaxLength() const noexcept {
+		return matches[count - 1].length;
+	}
+	void Set(const MatchResult& match) noexcept {
+		matches[0] = match; count = 1;
+	}
+	void Clear() noexcept {
+		count = 0;
+	}
 
 private:
 	size_t count;

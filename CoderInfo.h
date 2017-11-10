@@ -37,9 +37,9 @@ struct CoderInfo
 		typedef std::array<uint8_t, 15> IdString;
 
 		uint_least64_t method_id;
-		MethodId(uint_least64_t method_id_)
+		MethodId(uint_least64_t method_id_) noexcept
 			: method_id(method_id_) {}
-		size_t GetIdString(IdString& str) const;
+		size_t GetIdString(IdString& str) const noexcept;
 	};
 
 	std::basic_string<uint8_t> props;
@@ -56,10 +56,10 @@ struct CoderInfo
 		uint_least64_t method_id_,
 		unsigned num_in_streams_,
 		unsigned num_out_streams_);
-	bool IsComplex() const {
+	bool IsComplex() const noexcept {
 		return num_in_streams != 1 || num_out_streams != 1;
 	}
-	uint8_t GetHeaderFlags() const {
+	uint8_t GetHeaderFlags() const noexcept {
 		return (IsComplex() ? 0x10 : 0) | ((props.length() != 0) ? 0x20 : 0);
 	}
 };

@@ -35,6 +35,10 @@ struct MutableDataBlock
 	MutableDataBlock() {}
 	MutableDataBlock(uint8_t* data_, size_t start_, size_t end_)
 		: data(data_), start(start_), end(end_) {}
+	MutableDataBlock(const MutableDataBlock&) = delete;
+	MutableDataBlock& operator=(const MutableDataBlock&) = delete;
+	MutableDataBlock(MutableDataBlock&&) = delete;
+	MutableDataBlock& operator=(MutableDataBlock&&) = delete;
 };
 
 struct DataBlock

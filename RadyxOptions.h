@@ -57,14 +57,18 @@ public:
 		bool recurse;
 		FileSpec() {}
 		FileSpec(const _TCHAR* path_, Recurse recurse_);
-		void SetFullPath(const _TCHAR* full_path, unsigned length);
+		void SetFullPath(const _TCHAR* full_path);
 	};
 
 	class InvalidParameter
 	{
 	public:
 		InvalidParameter(const _TCHAR* arg) : arg_error(arg) {}
-		const _TCHAR* ArgError() const { return arg_error; }
+
+		const _TCHAR* ArgError() const {
+			return arg_error;
+		}
+
 	private:
 		const _TCHAR* arg_error;
 	};

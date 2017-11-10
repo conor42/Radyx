@@ -49,28 +49,30 @@ public:
 	static const UintFast32 kMaxLength = 255;
 
 	inline StructuredMatchTable(size_t dictionary_size);
-	inline void InitMatchLink(size_t index, UintFast32 link);
-	inline UintFast32 GetInitialMatchLink(size_t index) const;
-	inline UintFast32 GetMatchLink(size_t index) const;
-	inline UintFast32 GetMatchLength(size_t index) const;
-	inline UintFast32 GetMatchLinkAndLength(size_t index, uint8_t& length) const;
-	inline UintFast32 GetMatchLinkAndLength(size_t index, unsigned& length) const;
-	inline void SetMatchLink(size_t index, UintFast32 link, UintFast32 length);
-	inline void SetMatchLength(size_t index, UintFast32 link, UintFast32 length);
-	inline void SetMatchLinkAndLength(size_t index, UintFast32 link, uint8_t length);
-	inline void SetMatchLinkAndLength(size_t index, UintFast32 link, UintFast32 length);
-	inline void RestrictMatchLength(size_t index, UintFast32 length);
-	inline void SetNull(size_t index);
-	inline bool HaveMatch(size_t index) const;
-	inline MatchUnit* GetBuffer(size_t index);
-	inline size_t CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const;
-	static inline size_t GetMemoryUsage(size_t dictionary_size);
+	inline void InitMatchLink(size_t index, UintFast32 link) noexcept;
+	inline UintFast32 GetInitialMatchLink(size_t index) const noexcept;
+	inline UintFast32 GetMatchLink(size_t index) const noexcept;
+	inline UintFast32 GetMatchLength(size_t index) const noexcept;
+	inline UintFast32 GetMatchLinkAndLength(size_t index, uint8_t& length) const noexcept;
+	inline UintFast32 GetMatchLinkAndLength(size_t index, unsigned& length) const noexcept;
+	inline void SetMatchLink(size_t index, UintFast32 link, UintFast32 length) noexcept;
+	inline void SetMatchLength(size_t index, UintFast32 link, UintFast32 length) noexcept;
+	inline void SetMatchLinkAndLength(size_t index, UintFast32 link, uint8_t length) noexcept;
+	inline void SetMatchLinkAndLength(size_t index, UintFast32 link, UintFast32 length) noexcept;
+	inline void RestrictMatchLength(size_t index, UintFast32 length) noexcept;
+	inline void SetNull(size_t index) noexcept;
+	inline bool HaveMatch(size_t index) const noexcept;
+	inline MatchUnit* GetBuffer(size_t index) noexcept;
+	inline size_t CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const noexcept;
+	static inline size_t GetMemoryUsage(size_t dictionary_size) noexcept;
 
 private:
 	std::unique_ptr<MatchUnit[]> match_table;
 
 	StructuredMatchTable(const StructuredMatchTable&) = delete;
 	StructuredMatchTable& operator=(const StructuredMatchTable&) = delete;
+	StructuredMatchTable(StructuredMatchTable&&) = delete;
+	StructuredMatchTable& operator=(StructuredMatchTable&&) = delete;
 };
 
 StructuredMatchTable::StructuredMatchTable(size_t dictionary_size)
@@ -78,37 +80,37 @@ StructuredMatchTable::StructuredMatchTable(size_t dictionary_size)
 {
 }
 
-void StructuredMatchTable::InitMatchLink(size_t index, UintFast32 link)
+void StructuredMatchTable::InitMatchLink(size_t index, UintFast32 link) noexcept
 {
 	match_table[index >> kUnitBits].links[index & kUnitMask] = link;
 }
 
-UintFast32 StructuredMatchTable::GetInitialMatchLink(size_t index) const
+UintFast32 StructuredMatchTable::GetInitialMatchLink(size_t index) const noexcept
 {
 	return match_table[index >> kUnitBits].links[index & kUnitMask];
 }
 
-UintFast32 StructuredMatchTable::GetMatchLink(size_t index) const
+UintFast32 StructuredMatchTable::GetMatchLink(size_t index) const noexcept
 {
 	return match_table[index >> kUnitBits].links[index & kUnitMask];
 }
 
-UintFast32 StructuredMatchTable::GetMatchLength(size_t index) const
+UintFast32 StructuredMatchTable::GetMatchLength(size_t index) const noexcept
 {
 	return match_table[index >> kUnitBits].lengths[index & kUnitMask];
 }
 
-void StructuredMatchTable::SetMatchLink(size_t index, UintFast32 link, UintFast32 length)
+void StructuredMatchTable::SetMatchLink(size_t index, UintFast32 link, UintFast32 /*length*/) noexcept
 {
 	match_table[index >> kUnitBits].links[index & kUnitMask] = link;
 }
 
-void StructuredMatchTable::SetMatchLength(size_t index, UintFast32 link, UintFast32 length)
+void StructuredMatchTable::SetMatchLength(size_t index, UintFast32 /*link*/, UintFast32 length) noexcept
 {
 	match_table[index >> kUnitBits].lengths[index & kUnitMask] = static_cast<uint8_t>(length);
 }
 
-void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, uint8_t length)
+void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, uint8_t length) noexcept
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -116,7 +118,7 @@ void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, 
 	match_table[index].lengths[slot] = length;
 }
 
-void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, UintFast32 length)
+void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, UintFast32 length) noexcept
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -124,7 +126,7 @@ void StructuredMatchTable::SetMatchLinkAndLength(size_t index, UintFast32 link, 
 	match_table[index].lengths[slot] = static_cast<uint8_t>(length);
 }
 
-UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, uint8_t& length) const
+UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, uint8_t& length) const noexcept
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -132,7 +134,7 @@ UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, uint8_t& le
 	return match_table[index].links[slot];
 }
 
-UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, unsigned& length) const
+UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, unsigned& length) const noexcept
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -140,7 +142,7 @@ UintFast32 StructuredMatchTable::GetMatchLinkAndLength(size_t index, unsigned& l
 	return match_table[index].links[slot];
 }
 
-void StructuredMatchTable::RestrictMatchLength(size_t index, UintFast32 length)
+void StructuredMatchTable::RestrictMatchLength(size_t index, UintFast32 length) noexcept
 {
 	size_t slot = index & kUnitMask;
 	index >>= kUnitBits;
@@ -149,22 +151,22 @@ void StructuredMatchTable::RestrictMatchLength(size_t index, UintFast32 length)
 	}
 }
 
-void StructuredMatchTable::SetNull(size_t index)
+void StructuredMatchTable::SetNull(size_t index) noexcept
 {
 	match_table[index >> kUnitBits].links[index & kUnitMask] = kNullLink;
 }
 
-bool StructuredMatchTable::HaveMatch(size_t index) const
+bool StructuredMatchTable::HaveMatch(size_t index) const noexcept
 {
 	return match_table[index >> kUnitBits].links[index & kUnitMask] != kNullLink;
 }
 
-StructuredMatchTable::MatchUnit* StructuredMatchTable::GetBuffer(size_t index)
+StructuredMatchTable::MatchUnit* StructuredMatchTable::GetBuffer(size_t index) noexcept
 {
 	return match_table.get() + (index >> kUnitBits) + ((index & kUnitMask) != 0);
 }
 
-size_t StructuredMatchTable::CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const
+size_t StructuredMatchTable::CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const noexcept
 {
 	if (block_size < (size_t(1) << 27)) {
 		if (extra_thread_count >= 3) {
@@ -183,7 +185,7 @@ size_t StructuredMatchTable::CalcMatchBufferSize(size_t block_size, unsigned ext
 	}
 }
 
-size_t StructuredMatchTable::GetMemoryUsage(size_t dictionary_size)
+size_t StructuredMatchTable::GetMemoryUsage(size_t dictionary_size) noexcept
 {
 	return ((dictionary_size >> kUnitBits) + 1) * sizeof(MatchUnit);
 }

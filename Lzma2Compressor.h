@@ -28,13 +28,12 @@
 #include <algorithm>
 #include "winlean.h"
 #include "common.h"
-#include "OutputFile.h"
-#include "CharType.h"
+#include "OutputStream.h"
 #include "Lzma2Encoder.h"
 #include "CompressorInterface.h"
 #include "AsyncWriter.h"
 #include "Lzma2Options.h"
-#include "IoException.h"
+#include "staticvec.h"
 
 namespace Radyx {
 
@@ -44,17 +43,17 @@ class Lzma2Compressor : public CompressorInterface
 public:
 	Lzma2Compressor(const Lzma2Options& options);
 	virtual ~Lzma2Compressor();
-	size_t GetDictionarySize() const;
-	size_t GetMaxBufferOverrun() const;
-	inline unsigned GetEncodeWeight() const;
+	size_t GetDictionarySize() const noexcept;
+	size_t GetMaxBufferOverrun() const noexcept;
+	inline unsigned GetEncodeWeight() const noexcept;
 	size_t Compress(const DataBlock& data_block,
 		ThreadPool& threads,
 		OutputStream& out_stream,
 		ErrorCode& error_code,
 		Progress* progress = nullptr);
 	size_t Finalize(OutputStream& out_stream);
-	CoderInfo GetCoderInfo();
-	size_t GetMemoryUsage(unsigned thread_count) const;
+	CoderInfo GetCoderInfo() const noexcept;
+	size_t GetMemoryUsage(unsigned thread_count) const noexcept;
 
 private:
 	struct ThreadArgs
@@ -84,7 +83,7 @@ private:
 	static void ThreadFn(void* pwork, int encoder_num);
 
 	MatchTable<MatchTableT> match_table;
-	std::vector<EncoderArgs> encoders;
+	staticvec<EncoderArgs> encoders;
 	const Lzma2Options options;
 	ThreadPool::Thread writer_thread;
 	size_t dictionary_max;
@@ -94,13 +93,15 @@ private:
 #endif
 	Lzma2Compressor(const Lzma2Compressor&) = delete;
 	Lzma2Compressor& operator=(const Lzma2Compressor&) = delete;
+	Lzma2Compressor(Lzma2Compressor&&) = delete;
+	Lzma2Compressor& operator=(Lzma2Compressor&&) = delete;
 };
 
 template<class MatchTableT>
 Lzma2Compressor<MatchTableT>::Lzma2Compressor(const Lzma2Options& options_)
 	: match_table(std::min<size_t>(options_.dictionary_size, Lzma2Encoder::GetDictionarySizeMax()),
 		options_.match_buffer_size,
-		options_.fast_length,
+		static_cast<uint8_t>(options_.fast_length),
 		options_.random_filter),
 	options(options_),
 	dictionary_max(0),
@@ -122,19 +123,19 @@ Lzma2Compressor<MatchTableT>::~Lzma2Compressor()
 }
 
 template<class MatchTableT>
-size_t Lzma2Compressor<MatchTableT>::GetDictionarySize() const
+size_t Lzma2Compressor<MatchTableT>::GetDictionarySize() const noexcept
 {
 	return match_table.GetDictionarySize();
 }
 
 template<class MatchTableT>
-size_t Lzma2Compressor<MatchTableT>::GetMaxBufferOverrun() const
+size_t Lzma2Compressor<MatchTableT>::GetMaxBufferOverrun() const noexcept
 {
 	return Lzma2Encoder::GetMatchLenMax();
 }
 
 template<class MatchTableT>
-unsigned Lzma2Compressor<MatchTableT>::GetEncodeWeight() const
+unsigned Lzma2Compressor<MatchTableT>::GetEncodeWeight() const noexcept
 {
 	if (options.encoder_mode == Lzma2Options::kFastMode) {
 		return 1;
@@ -178,8 +179,7 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 	if (data_block.end <= data_block.start) {
 		return 0;
 	}
-	auto saved_exceptions = out_stream.exceptions();
-	out_stream.exceptions(std::ios_base::goodbit);
+	out_stream.DisableExceptions();
 	dictionary_max = std::max(dictionary_max, data_block.end);
 	match_table.BuildTable(data_block, threads, progress);
 	if (g_break) {
@@ -196,14 +196,14 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 	}
 	unsigned thread_count = 1 + extra_thread_count;
 	if (encoders.size() < thread_count) {
-		encoders.resize(thread_count);
+		encoders = staticvec<EncoderArgs>(thread_count);
 	}
 	for (unsigned i = 0; i < thread_count; ++i) {
 		encoders[i].start = data_block.start + i * block_size / thread_count;
 		encoders[i].end = data_block.start + (i + 1) * block_size / thread_count;
 	}
-	if (encoders[0].end < data_block.end) {
-		match_table.CreateDivision(encoders[0].end);
+	if (encoders.front().end < data_block.end) {
+		match_table.CreateDivision(encoders.front().end);
 	}
 	ThreadArgs args(*this, data_block, progress);
 	for (unsigned i = 1; i < thread_count; ++i) {
@@ -213,10 +213,10 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 		threads[i - 1].SetWork(Lzma2Compressor<MatchTableT>::ThreadFn, &args, i);
 	}
 	AsyncWriter writer(out_stream, writer_thread);
-	size_t total = encoders[0].encoder.Encode(match_table,
+	size_t total = encoders.front().encoder.Encode(match_table,
 		data_block,
-		encoders[0].start,
-		encoders[0].end,
+		encoders.front().start,
+		encoders.front().end,
 		options,
 		needed_random_check,
 		progress,
@@ -230,10 +230,10 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 	}
 	for (unsigned i = 1; i < thread_count; ++i) {
 		threads[i - 1].Join();
-		if (!g_break && !out_stream.fail()) {
-			out_stream.write(match_table.GetOutputCharBuffer(encoders[i].start),
+		if (!g_break && !out_stream.Fail()) {
+			out_stream.Write(match_table.GetOutputCharBuffer(encoders[i].start),
 				encoders[i].encoded_size);
-			if (!g_break && out_stream.fail()) {
+			if (!g_break && out_stream.Fail()) {
 				error_code.LoadOsErrorCode();
 				error_code.type = ErrorCode::kWrite;
 			}
@@ -241,37 +241,27 @@ size_t Lzma2Compressor<MatchTableT>::Compress(const DataBlock& data_block,
 		}
 	}
 	needed_random_check = encoders[thread_count - 1].encoder.NeededRandomCheck();
-	out_stream.exceptions(saved_exceptions);
+	out_stream.RestoreExceptions();
 	return total;
 }
 
 template<class MatchTableT>
 size_t Lzma2Compressor<MatchTableT>::Finalize(OutputStream& out_stream)
 {
-	out_stream.put(kChunkEof);
+	out_stream.Put(kChunkEof);
 	needed_random_check = false;
 	return 1;
 }
 
 template<class MatchTableT>
-CoderInfo Lzma2Compressor<MatchTableT>::GetCoderInfo()
+CoderInfo Lzma2Compressor<MatchTableT>::GetCoderInfo() const noexcept
 {
-	uint8_t dict_size_prop;
-	for (uint8_t bit = 11; bit < 32; ++bit) {
-		if ((size_t(2) << bit) >= dictionary_max) {
-			dict_size_prop = (bit - 11) << 1;
-			break;
-		}
-		if ((size_t(3) << bit) >= dictionary_max) {
-			dict_size_prop = ((bit - 11) << 1) | 1;
-			break;
-		}
-	}
+	uint8_t dict_size_prop = Lzma2Encoder::GetDictSizeProp(dictionary_max);
 	return CoderInfo(&dict_size_prop, 1, 0x21, 1, 1);
 }
 
 template<class MatchTableT>
-size_t Lzma2Compressor<MatchTableT>::GetMemoryUsage(unsigned thread_count) const
+size_t Lzma2Compressor<MatchTableT>::GetMemoryUsage(unsigned thread_count) const noexcept
 {
 	return match_table.GetMemoryUsage(thread_count) +
 		Lzma2Encoder::GetMemoryUsage(options) * thread_count;

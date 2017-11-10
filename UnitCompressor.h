@@ -26,10 +26,12 @@
 #define RADYX_UNIT_COMPRESSOR_H
 
 #include "common.h"
-#include "OutputFile.h"
+#include "OutputStream.h"
 #include "ThreadPool.h"
 #include "CompressorInterface.h"
+#ifdef RADYX_BCJ
 #include "BcjX86.h"
+#endif
 #include "Progress.h"
 #include "ErrorCode.h"
 
@@ -42,9 +44,16 @@ public:
 	void Reset(bool do_bcj);
 	void Reset(bool do_bcj, bool async_read_);
 	size_t GetAvailableSpace() const;
-	uint8_t* GetAvailableBuffer() { return data_buffer[buffer_index].get() + block_end; }
-	void AddByteCount(size_t count) { block_end += count; }
-	void RemoveByteCount(size_t count) { block_end -= count; }
+
+	uint8_t* GetAvailableBuffer() noexcept {
+		return data_buffer[buffer_index].get() + block_end;
+	}
+	void AddByteCount(size_t count) noexcept {
+		block_end += count;
+	}
+	void RemoveByteCount(size_t count) noexcept {
+		block_end -= count;
+	}
 	void Compress(CompressorInterface& compressor,
 		ThreadPool& threads,
 		OutputStream& out_stream,
@@ -53,11 +62,27 @@ public:
 	void Write(OutputStream& out_stream);
 	void CheckError() const;
 	inline void WaitCompletion();
-	size_t GetUnpackSize() const { return unpack_size; }
-	size_t GetPackSize() const { return pack_size; }
-	bool UsedBcj() const { return bcj.get() != nullptr; }
-	CoderInfo GetBcjCoderInfo() const { return bcj->GetCoderInfo(); }
-	size_t GetMemoryUsage() const { return dictionary_size * (1 + async_read); }
+
+	bool Unprocessed() const noexcept {
+		return block_end > block_start - unprocessed;
+	}
+	size_t GetUnpackSize() const noexcept {
+		return unpack_size;
+	}
+	size_t GetPackSize() const noexcept {
+		return pack_size;
+	}
+#ifdef RADYX_BCJ
+	bool UsedBcj() const noexcept {
+		return bcj.get() != nullptr;
+	}
+	CoderInfo GetBcjCoderInfo() const noexcept {
+		return bcj->GetCoderInfo();
+	}
+#endif
+	size_t GetMemoryUsage() const noexcept {
+		return dictionary_size * (1 + async_read);
+	}
 
 private:
 	struct ThreadArgs
@@ -79,7 +104,9 @@ private:
 	static void ThreadFn(void* pwork, int unused);
 
 	std::unique_ptr<uint8_t[]> data_buffer[2];
+#ifdef RADYX_BCJ
 	std::unique_ptr<BcjTransform> bcj;
+#endif
 	size_t dictionary_size;
 	size_t block_start;
 	size_t block_end;
@@ -96,6 +123,8 @@ private:
 
 	UnitCompressor(const UnitCompressor&) = delete;
 	UnitCompressor& operator=(const UnitCompressor&) = delete;
+	UnitCompressor(UnitCompressor&&) = delete;
+	UnitCompressor& operator=(UnitCompressor&&) = delete;
 };
 
 void UnitCompressor::WaitCompletion()

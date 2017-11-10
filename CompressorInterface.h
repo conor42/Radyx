@@ -25,7 +25,7 @@
 #ifndef RADYX_COMPRESSOR_INTERFACE_H
 #define RADYX_COMPRESSOR_INTERFACE_H
 
-#include "OutputFile.h"
+#include "OutputStream.h"
 #include "DataBlock.h"
 #include "ThreadPool.h"
 #include "Progress.h"
@@ -52,7 +52,7 @@ public:
 	// Anything to do at the end of a unit
 	virtual size_t Finalize(OutputStream& out_stream) = 0;
 	// 7-zip coder info
-	virtual CoderInfo GetCoderInfo() = 0;
+	virtual CoderInfo GetCoderInfo() const = 0;
 	// Estimated memory usage
 	virtual size_t GetMemoryUsage(unsigned thread_count) const = 0;
 };

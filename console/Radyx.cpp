@@ -50,9 +50,9 @@ static const char kLicense[] = "This software has NO WARRANTY and is released un
 
 static const uint_least64_t kMinMemory = 512 * 1024 * 1024;
 
-volatile bool g_break = false;
+volatile bool Radyx::g_break = false;
 
-void SignalHandler(int param)
+void SignalHandler(int /*param*/)
 {
 	g_break = true;
 }

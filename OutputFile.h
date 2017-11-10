@@ -26,15 +26,18 @@
 #define RADYX_OUTPUT_FILE_H
 
 #include "common.h"
+#include "OutputStream.h"
 
 #ifdef _WIN32
 #include "winlean.h"
 #include "CharType.h"
 
-class OutputFile
+namespace Radyx {
+
+class OutputFile : public OutputStream
 {
 public:
-	OutputFile();
+	OutputFile() noexcept;
 	explicit OutputFile(const _TCHAR* filename);
 	virtual ~OutputFile();
 	void open(const _TCHAR* filename, bool no_caching = false);
@@ -42,9 +45,15 @@ public:
 	OutputFile& write(const char* s, size_t n);
 	uint_least64_t tellp();
 	OutputFile& seekp(uint_least64_t pos);
-	std::ios_base::iostate exceptions() const;
-	void exceptions(std::ios_base::iostate except);
-	bool fail() const;
+	std::ios_base::iostate exceptions() const noexcept;
+	void exceptions(std::ios_base::iostate except) noexcept;
+	bool fail() const noexcept;
+
+	OutputStream& Put(char c);
+	OutputStream& Write(const char* s, size_t n);
+	void DisableExceptions();
+	void RestoreExceptions();
+	bool Fail() const noexcept;
 
 private:
 	void AddError(std::ios_base::iostate error);
@@ -52,15 +61,20 @@ private:
 	HANDLE handle;
 	std::ios_base::iostate error_state;
 	std::ios_base::iostate exception_flags;
+	std::ios_base::iostate saved_exception_flags;
+
+	OutputFile(const OutputFile&) = delete;
+	OutputFile& operator=(const OutputFile&) = delete;
+	OutputFile(OutputFile&&) = delete;
+	OutputFile& operator=(OutputFile&&) = delete;
 };
 
-typedef OutputFile OutputStream;
+} // Radyx
 
 #else 
 
 #include <ostream>
 
-typedef std::ostream OutputStream;
 typedef std::ofstream OutputFile;
 
 #endif // _WIN32

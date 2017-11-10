@@ -95,7 +95,7 @@ void Container7z::Writer::Flush()
 	}
 }
 
-void Container7z::ReserveSignatureHeader(OutputStream& out_stream)
+void Container7z::ReserveSignatureHeader(OutputFile& out_stream)
 {
 	std::array<char, 32> buf;
 	buf.fill(0);
@@ -108,7 +108,7 @@ void Container7z::ReserveSignatureHeader(OutputStream& out_stream)
 void Container7z::WriteSignatureHeader(uint_least64_t header_offset,
 	uint_least64_t header_size,
 	uint_fast32_t header_crc32,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	out_stream.seekp(0);
 	out_stream.write(kSignature, sizeof(kSignature));
@@ -238,7 +238,7 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
 	CompressorInterface &compressor,
 	ThreadPool& threads,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	out_stream.exceptions(std::ios_base::failbit | std::ios_base::badbit);
 	unit_comp.Reset(false, false);
@@ -278,7 +278,7 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
 	CompressorInterface &compressor,
 	ThreadPool& threads,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	Writer writer(unit_comp, &compressor, threads, out_stream);
 	writer.WriteByte(kHeader);
@@ -355,7 +355,7 @@ uint_fast32_t Container7z::WriteHeaderHeader(UnitCompressor& unit_comp,
 	uint_least64_t header_pack_size,
 	uint_least64_t header_unpack_size,
 	ThreadPool& threads,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	Writer writer(unit_comp, nullptr, threads, out_stream);
 	writer.WriteCompressedUint64(kEncodedHeader);

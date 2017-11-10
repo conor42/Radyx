@@ -47,7 +47,7 @@ public:
 	inline void BuildUpdate(size_t bytes_done);
 	inline void EncodeUpdate(size_t bytes_done);
 	inline void Adjust(int_least64_t size_change);
-	inline std::mutex& GetMutex() { return mtx; }
+	inline std::mutex& GetMutex();
 
 private:
 	unsigned ShowLocked();
@@ -63,6 +63,8 @@ private:
 
 	Progress(const Progress&) = delete;
 	Progress& operator=(const Progress&) = delete;
+	Progress(Progress&&) = delete;
+	Progress& operator=(Progress&&) = delete;
 };
 
 void Progress::BuildUpdate(size_t bytes_done)
@@ -80,6 +82,10 @@ void Progress::EncodeUpdate(size_t bytes_done)
 void Progress::Adjust(int_least64_t size_change)
 {
 	total_bytes += size_change;
+}
+
+std::mutex& Progress::GetMutex() {
+	return mtx;
 }
 
 void Progress::Show()

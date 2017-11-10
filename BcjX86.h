@@ -36,16 +36,16 @@ namespace Radyx {
 class BcjX86 : public BcjTransform
 {
 public:
-	BcjX86();
-	size_t Transform(MutableDataBlock& block, bool encoding);
-	void Reset();
-	CoderInfo GetCoderInfo() const;
+	BcjX86() noexcept;
+	size_t Transform(MutableDataBlock& block, bool encoding) noexcept;
+	void Reset() noexcept;
+	CoderInfo GetCoderInfo() const noexcept;
 
 private:
 	static const bool kMaskToAllowedStatus[8];
 	static const uint8_t kMaskToBitNumber[8];
 
-	inline bool Test86MSByte(uint8_t b) const {
+	inline bool Test86MSByte(uint8_t b) const noexcept {
 		return uint8_t(b + 1) < 2;
 	}
 

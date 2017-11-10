@@ -1,0 +1,42 @@
+The LZMA2 container supports multiple runs of compressed LZMA data and uncompressed data. Each LZMA compressed run can have a different LZMA configuration and dictionary. This improves the compression of partially or completely incompressible files and allows multithreaded compression and multithreaded decompression by breaking the file into runs that can be compressed or decompressed independently in parallel.
+
+The LZMA2 header consists of a byte indicating the dictionary size:
+
+    40 indicates a 4 GB - 1 dictionary size
+    Even values less than 40 indicate a 2v/2 + 12 bytes dictionary size
+    Odd values less than 40 indicate a 3×2(v - 1)/2 + 11 bytes dictionary size
+    Values higher than 40 are invalid
+
+LZMA2 data consists of packets starting with a control byte, with the following values:
+
+    0 denotes the end of the file
+    1 denotes a dictionary reset followed by an uncompressed chunk
+    2 denotes an uncompressed chunk without a dictionary reset
+    3-0x7f are invalid values
+    0x80-0xff denotes an LZMA chunk, where the lowest 5 bits are used as bit 16-20 of the uncompressed size minus one, and bit 5-6 indicates what should be reset
+
+Bits 5-6 for LZMA chunks can be:
+
+    0: nothing reset
+    1: state reset
+    2: state reset, properties reset using properties byte
+    3: state reset, properties reset using properties byte, dictionary reset
+
+LZMA state resets cause a reset of all LZMA state except the dictionary, and specifically:
+
+    The range coder
+    The state value
+    The last distances for repeated matches
+    All LZMA probabilities
+
+Uncompressed chunks consist of:
+
+    A 16-bit big-endian value encoding the data size minus one
+    The data to be copied verbatim into the dictionary and the output
+
+LZMA chunks consist of:
+
+    A 16-bit big-endian value encoding the low 16-bits of the uncompressed size minus one
+    A 16-bit big-endian value encoding the compressed size minus one
+    A properties/lclppb byte if bit 6 in the control byte is set
+    The LZMA compressed data, starting with the 5 bytes (of which the first is ignored) used to initialize the range coder (which are included in the compressed size)

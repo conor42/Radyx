@@ -26,10 +26,29 @@
 #include <cstring>
 #include "common.h"
 #include "UnitCompressor.h"
+
+#ifdef UI_EXCEPTIONS
 #include "IoException.h"
 #include "Strings.h"
+#endif
 
 namespace Radyx {
+
+#ifdef UI_EXCEPTIONS
+
+inline void throw_write_exception(int os_error)
+{
+	throw IoException(Strings::kCannotWriteArchive, os_error, _T(""));
+}
+
+#else
+
+inline void throw_write_exception(int /*os_error*/)
+{
+	throw std::ios_base::failure("");
+}
+
+#endif
 
 UnitCompressor::UnitCompressor(size_t dictionary_size_,
 	size_t max_buffer_overrun,
@@ -37,12 +56,19 @@ UnitCompressor::UnitCompressor(size_t dictionary_size_,
 	bool do_bcj,
 	bool async_read_)
 	: dictionary_size(dictionary_size_),
+#ifdef RADYX_BCJ
 	overlap((overlap_ > BcjTransform::kMaxUnprocessed) ? overlap_ : BcjTransform::kMaxUnprocessed),
+#else
+	overlap(overlap_),
+#endif
 	unprocessed(0),
 	buffer_index(0),
 	async_read(async_read_),
 	working(false)
 {
+#ifndef RADYX_BCJ
+	assert(!do_bcj);
+#endif
 	data_buffer[0].reset(new uint8_t[dictionary_size_ + max_buffer_overrun]);
 	if (async_read_) {
 		data_buffer[1].reset(new uint8_t[dictionary_size_ + max_buffer_overrun]);
@@ -64,6 +90,8 @@ void UnitCompressor::Reset(bool do_bcj, bool async_read_)
 	unpack_size = 0;
 	pack_size = 0;
 	unprocessed = 0;
+	do_bcj; // suppress warning
+#ifdef RADYX_BCJ
 	if (do_bcj) {
 		if (bcj.get() == nullptr) {
 			bcj.reset(new BcjX86);
@@ -73,6 +101,7 @@ void UnitCompressor::Reset(bool do_bcj, bool async_read_)
 		}
 	}
 	else bcj.reset(nullptr);
+#endif
 	async_read = async_read_ && data_buffer[1].get() != nullptr;
 	buffer_index = 0;
 }
@@ -83,7 +112,7 @@ size_t UnitCompressor::GetAvailableSpace() const
 	return dictionary_size - block_end;
 }
 
-void UnitCompressor::ThreadFn(void* pwork, int unused)
+void UnitCompressor::ThreadFn(void* pwork, int /*unused*/)
 {
 	UnitCompressor* unit_comp = reinterpret_cast<UnitCompressor*>(pwork);
 	try {
@@ -113,7 +142,7 @@ void UnitCompressor::CheckError() const
 		throw std::bad_alloc();
 	}
 	else if (error_code.type == ErrorCode::kWrite) {
-		throw IoException(Strings::kCannotWriteArchive, error_code.os_code, _T(""));
+		throw_write_exception(error_code.os_code);
 	}
 	else {
 		throw std::exception();
@@ -130,6 +159,7 @@ void UnitCompressor::Compress(CompressorInterface& compressor,
 	{
 		size_t processed_end = block_end;
 		MutableDataBlock mut_block(data_buffer[buffer_index].get(), block_start - unprocessed, block_end);
+#ifdef RADYX_BCJ
 		if (bcj.get() != nullptr) {
 			processed_end = bcj->Transform(mut_block, true);
 			// If the buffer is not full, there is no more data for this unit so
@@ -139,6 +169,7 @@ void UnitCompressor::Compress(CompressorInterface& compressor,
 			}
 			unprocessed = block_end - processed_end;
 		}
+#endif
 		if (async_read) {
 			WaitCompletion();
 			args = ThreadArgs(&compressor,
@@ -180,9 +211,10 @@ void UnitCompressor::Write(OutputStream& out_stream)
 {
 	CheckError();
 	size_t to_write = block_end - block_start;
-	out_stream.write(reinterpret_cast<const char*>(data_buffer[buffer_index].get() + block_start), to_write);
-	if (!g_break && out_stream.fail()) {
-		throw IoException(Strings::kCannotWriteArchive, _T(""));
+	out_stream.Write(reinterpret_cast<const char*>(data_buffer[buffer_index].get() + block_start), to_write);
+	if (!g_break && out_stream.Fail()) {
+		error_code.LoadOsErrorCode();
+		throw_write_exception(error_code.os_code);
 	}
 	unpack_size += to_write;
 	pack_size += to_write;

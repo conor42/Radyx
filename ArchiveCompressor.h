@@ -66,8 +66,9 @@ public:
 			mod_time(0),
 			attributes(0),
 			ext_index(GetExtensionIndex(name_ + ext)) {}
-		bool IsEmpty() const { return size == 0; }
-		FileInfo& operator=(const FileInfo&) = delete;
+		bool IsEmpty() const {
+			return size == 0;
+		}
 	};
 
 	struct DataUnit
@@ -105,6 +106,8 @@ public:
 #endif
 		FileReader(const FileReader&) = delete;
 		FileReader& operator=(const FileReader&) = delete;
+		FileReader(FileReader&&) = delete;
+		FileReader& operator=(FileReader&&) = delete;
 	};
 
 	ArchiveCompressor();
@@ -113,9 +116,13 @@ public:
 		CompressorInterface& compressor,
 		const RadyxOptions& options,
 		ThreadPool& threads,
-		OutputStream& out_stream);
-	const std::list<FileInfo>& GetFileList() const { return file_list; }
-	const std::list<DataUnit>& GetUnitList() const { return unit_list; }
+		OutputFile& out_stream);
+	const std::list<FileInfo>& GetFileList() const {
+		return file_list;
+	}
+	const std::list<DataUnit>& GetUnitList() const {
+		return unit_list;
+	}
 	size_t GetEmptyFileCount() const;
 	size_t GetNameLengthTotal() const;
 
@@ -129,7 +136,7 @@ private:
 		const RadyxOptions& options,
 		ThreadPool& threads,
 		Progress& progress,
-		OutputStream& out_stream);
+		OutputFile& out_stream);
 	static unsigned GetExtensionIndex(const _TCHAR* ext);
 
 	std::list<FileInfo> file_list;
@@ -140,6 +147,8 @@ private:
 
 	ArchiveCompressor(const ArchiveCompressor&) = delete;
 	ArchiveCompressor& operator=(const ArchiveCompressor&) = delete;
+	ArchiveCompressor(ArchiveCompressor&&) = delete;
+	ArchiveCompressor& operator=(ArchiveCompressor&&) = delete;
 };
 
 #ifdef _WIN32

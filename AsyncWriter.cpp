@@ -28,13 +28,13 @@
 
 namespace Radyx {
 
-void AsyncWriter::ThreadFn(void* pwork, int unused)
+void AsyncWriter::ThreadFn(void* pwork, int /*unused*/)
 {
 	AsyncWriter* writer = reinterpret_cast<AsyncWriter*>(pwork);
-	if (!writer->out_stream.fail()) {
-		writer->out_stream.write(reinterpret_cast<char*>(writer->out_buffer),
+	if (!writer->out_stream.Fail()) {
+		writer->out_stream.Write(reinterpret_cast<char*>(writer->out_buffer),
 			writer->buffer_size);
-		if (writer->out_stream.fail()) {
+		if (writer->out_stream.Fail()) {
 			writer->error.LoadOsErrorCode();
 			writer->error.type = ErrorCode::kWrite;
 		}

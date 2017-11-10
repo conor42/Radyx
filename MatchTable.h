@@ -31,7 +31,6 @@
 #include <stdint.h>
 #include "winlean.h"
 #include "common.h"
-#include "CharType.h"
 #include "DataBlock.h"
 #include "MatchTableBuilder.h"
 #include "ThreadPool.h"
@@ -39,6 +38,7 @@
 #include "PackedMatchTable.h"
 #include "StructuredMatchTable.h"
 #include "MatchResult.h"
+#include "staticvec.h"
 
 namespace Radyx {
 
@@ -51,19 +51,26 @@ public:
 		uint8_t search_depth,
 		unsigned random_filter_ = 0);
 	~MatchTable();
-	size_t GetDictionarySize() const { return dictionary_size; }
-	size_t GetMemoryUsage(unsigned thread_count) const;
-	uint8_t* GetOutputByteBuffer(size_t index) {
+	size_t GetDictionarySize() const noexcept {
+		return dictionary_size;
+	}
+	size_t GetMemoryUsage(unsigned thread_count) const noexcept;
+	uint8_t* GetOutputByteBuffer(size_t index) noexcept {
 		return reinterpret_cast<uint8_t*>(match_table.GetBuffer(index)); }
-	char* GetOutputCharBuffer(size_t index) {
+	char* GetOutputCharBuffer(size_t index) noexcept {
 		return reinterpret_cast<char*>(match_table.GetBuffer(index)); }
-	inline bool HaveMatch(size_t index) const { return match_table.HaveMatch(index); }
+	inline bool HaveMatch(size_t index) const noexcept {
+		return match_table.HaveMatch(index);
+	}
 	template<unsigned kMatchLenMax>
-	inline MatchResult GetMatch(const DataBlock& block, size_t index) const;
+	inline MatchResult GetMatch(const DataBlock& block, size_t index) const noexcept;
+
 	void BuildTable(const DataBlock& block, ThreadPool& threads, Progress* progress = nullptr);
-	void CreateDivision(size_t index);
-	bool IsRandom(const DataBlock& block, size_t index, size_t size) const;
-	bool IsRandom() const { return is_random; }
+	void CreateDivision(size_t index) noexcept;
+	bool IsRandom(const DataBlock& block, size_t index, size_t size) const noexcept;
+	bool IsRandom() const noexcept {
+		return is_random;
+	}
 
 private:
 	static const UintFast32 kNullLink = MatchTableBuilder::kNullLink;
@@ -93,7 +100,6 @@ private:
 			const DataBlock& block_,
 			MatchTableBuilder::HeadIndexes& head_indexes_,
 			Progress* progress_,
-			unsigned extra_thread_count_,
 			uint8_t start_depth_)
 			: match_table(match_table_),
 			block(block_),
@@ -103,12 +109,13 @@ private:
 	};
 
 	static void ThreadFn(void* pwork, int thread_num);
-	void InitHeadTable(size_t table_size);
-	size_t HandleRepeat(const DataBlock& block, ptrdiff_t block_size, ptrdiff_t i, size_t radix_8);
+	void InitHeadTable(size_t table_size) noexcept;
+	size_t HandleRepeat(const DataBlock& block, ptrdiff_t block_size, ptrdiff_t i, size_t radix_8) noexcept;
 	void InitLinks8(const DataBlock& block, Progress* progress);
 	void InitLinks16(const DataBlock& block, Progress* progress);
+
 	template<unsigned kMatchLenMax>
-	inline unsigned ExtendMatch(const DataBlock& block, size_t index, UintFast32 link, unsigned length) const;
+	inline unsigned ExtendMatch(const DataBlock& block, size_t index, UintFast32 link, unsigned length) const noexcept;
 
 	// Match table storage and manipulation object
 	MatchTableT match_table;
@@ -119,7 +126,7 @@ private:
 	// Size for buffering
 	OptionalSetting<size_t> match_buffer_size;
 	// One table builder per thread
-	std::vector<MatchTableBuilder> table_builders;
+	staticvec<MatchTableBuilder> table_builders;
 	// Cutoff value for random filtration
 	unsigned random_filter;
 	// Derived cutoff value for the filtration algorithm
@@ -135,6 +142,8 @@ private:
 #endif
 	MatchTable(const MatchTable&) = delete;
 	MatchTable& operator=(const MatchTable&) = delete;
+	MatchTable(MatchTable&&) = delete;
+	MatchTable& operator=(MatchTable&&) = delete;
 };
 
 template<class MatchTableT>
@@ -169,7 +178,7 @@ MatchTable<MatchTableT>::MatchTable(size_t dictionary_size_,
 }
 
 template<class MatchTableT>
-size_t MatchTable<MatchTableT>::GetMemoryUsage(unsigned thread_count) const
+size_t MatchTable<MatchTableT>::GetMemoryUsage(unsigned thread_count) const noexcept
 {
 	size_t buf_size = match_buffer_size.IsSet() ?
 		match_buffer_size.Get() : match_table.CalcMatchBufferSize(dictionary_size, thread_count - 1);
@@ -191,7 +200,7 @@ MatchTable<MatchTableT>::~MatchTable()
 // Get a match from the table and extend it beyond the max depth
 template<class MatchTableT>
 template<unsigned kMatchLenMax>
-MatchResult MatchTable<MatchTableT>::GetMatch(const DataBlock& block, size_t index) const
+MatchResult MatchTable<MatchTableT>::GetMatch(const DataBlock& block, size_t index) const noexcept
 {
 	MatchResult match;
 	UintFast32 link = match_table.GetMatchLinkAndLength(index, match.length);
@@ -218,7 +227,7 @@ void MatchTable<MatchTableT>::BuildTable(const DataBlock& block, ThreadPool& thr
 #endif
 	unsigned thread_count = 1 + threads.GetCount();
 	if (table_builders.size() < thread_count) {
-		table_builders.resize(thread_count);
+		table_builders = staticvec<MatchTableBuilder>(thread_count);
 	}
 	uint8_t start_depth = 2;
 	size_t table_size = kHeadTableSize;
@@ -256,13 +265,13 @@ void MatchTable<MatchTableT>::BuildTable(const DataBlock& block, ThreadPool& thr
 	}
 	// Create an object for allocating lists to threads
 	MatchTableBuilder::HeadIndexes head_indexes(head_table.get(), table_size, block.end, thread_count);
-	ThreadArgs args(*this, block, head_indexes, progress, threads.GetCount(), start_depth);
+	ThreadArgs args(*this, block, head_indexes, progress, start_depth);
 	// Start the worker threads
 	for (unsigned i = 0; i < threads.GetCount(); ++i) {
 		threads[i].SetWork(MatchTable::ThreadFn, &args, i + 1);
 	}
 	// Do the main thread's work
-	table_builders[0].RecurseLists(block,
+	table_builders.front().RecurseLists(block,
 		match_table,
 		head_table.get(),
 		head_indexes,
@@ -283,7 +292,7 @@ void MatchTable<MatchTableT>::BuildTable(const DataBlock& block, ThreadPool& thr
 }
 
 template<class MatchTableT>
-void MatchTable<MatchTableT>::CreateDivision(size_t index)
+void MatchTable<MatchTableT>::CreateDivision(size_t index) noexcept
 {
 	// Restrict the match lengths so that they don't reach beyond index
 	match_table.SetNull(index - 1);
@@ -313,7 +322,7 @@ void MatchTable<MatchTableT>::ThreadFn(void* pwork, int thread_num)
 }
 
 template<class MatchTableT>
-void MatchTable<MatchTableT>::InitHeadTable(size_t table_size)
+void MatchTable<MatchTableT>::InitHeadTable(size_t table_size) noexcept
 {
 	for (size_t i = 0; i < table_size; i += 2) {
 		head_table[i].head = kNullLink;
@@ -325,7 +334,7 @@ void MatchTable<MatchTableT>::InitHeadTable(size_t table_size)
 
 // If a repeating byte is found, fill that section of the table with matches of distance 1
 template<class MatchTableT>
-size_t MatchTable<MatchTableT>::HandleRepeat(const DataBlock& block, ptrdiff_t block_size, ptrdiff_t i, size_t radix_8)
+size_t MatchTable<MatchTableT>::HandleRepeat(const DataBlock& block, ptrdiff_t block_size, ptrdiff_t i, size_t radix_8) noexcept
 {
 	ptrdiff_t rpt_index = i - (kMaxRepeat - 3);
 	// Set the head to the first byte of the repeat and adjust the count
@@ -498,8 +507,8 @@ void MatchTable<MatchTableT>::InitLinks16(const DataBlock& block, Progress* prog
 			// of distance[n] == distance[n+1]. Crude but it helps.
 			UintFast32 nonrnd_count = 0;
 			UintFast32 prev_link = kNullLink;
-			for (ptrdiff_t i = block.start; i < block_size; ++i) {
-				UintFast32 link = match_table.GetInitialMatchLink(i);
+			for (ptrdiff_t j = block.start; j < block_size; ++j) {
+				UintFast32 link = match_table.GetInitialMatchLink(j);
 				// if prev_link == kNullLink and link == 0 this increments erroneously but it can only happen once.
 				nonrnd_count += (link == prev_link + 1);
 				prev_link = link;
@@ -518,7 +527,7 @@ template<unsigned kMatchLenMax>
 unsigned MatchTable<MatchTableT>::ExtendMatch(const DataBlock& block,
 	size_t start_index,
 	UintFast32 link,
-	unsigned length) const
+	unsigned length) const noexcept
 {
 	size_t end_index = start_index + length;
 	size_t dist = start_index - link;
@@ -539,7 +548,7 @@ unsigned MatchTable<MatchTableT>::ExtendMatch(const DataBlock& block,
 // Determine if a section of the data block is compressible by checking match lengths
 // in the match table and the distribution of character values.
 template<class MatchTableT>
-bool MatchTable<MatchTableT>::IsRandom(const DataBlock& block, size_t index, size_t size) const
+bool MatchTable<MatchTableT>::IsRandom(const DataBlock& block, size_t index, size_t size) const noexcept
 {
 	size = std::min(size, block.end - index);
 	if (size < kMinEncoderRandomCheckSize) {

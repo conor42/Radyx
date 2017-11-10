@@ -37,6 +37,7 @@
 #include "CharType.h"
 #include "UnitCompressor.h"
 #include "ArchiveCompressor.h"
+#include "RadyxOptions.h"
 #include "UnitCompressor.h"
 #include "Lzma2Compressor.h"
 #include "Strings.h"
@@ -49,7 +50,7 @@ _T("chm\0hxi\0hxs")
 _T("\0gif\0jpeg\0jpg\0jp2\0png\0tiff\0bmp\0ico\0psd\0psp")
 _T("\0awg\0ps\0eps\0cgm\0dxf\0svg\0vrml\0wmf\0emf\0ai\0md")
 _T("\0cad\0dwg\0pps\0key\0sxi")
-_T("\0max\0003ds")
+_T("\0max\0")_T("3ds")
 _T("\0iso\0bin\0nrg\0mdf\0img\0pdi\0tar\0cpio\0xpi")
 _T("\0vfd\0vhd\0vud\0vmc\0vsv")
 _T("\0vmdk\0dsk\0nvram\0vmem\0vmsd\0vmsn\0vmss\0vmtm")
@@ -67,10 +68,10 @@ _T("\0abw\0afp\0cwk\0lwp\0wpd\0wps\0wpt\0wrf\0wri")
 _T("\0abf\0afm\0bdf\0fon\0mgf\0otf\0pcf\0pfa\0snf\0ttf")
 _T("\0dbf\0mdb\0nsf\0ntf\0wdb\0db\0fdb\0gdb")
 _T("\0pdb\0pch\0idb\0ncb\0opt")
-_T("\0003gp\0avi\0mov\0mpeg\0mpg\0mpe\0wmv")
+_T("\0")_T("3gp\0avi\0mov\0mpeg\0mpg\0mpe\0wmv")
 _T("\0aac\0ape\0fla\0flac\0la\0mp3\0m4a\0mp4\0ofr\0ogg\0pac\0ra\0rm\0rka\0shn\0swa\0tta\0wv\0wma\0wav")
 _T("\0swf")
-_T("\0lzma\0007z\0ace\0arc\0arj\0bz\0bz2\0deb\0lzo\0lzx\0gz\0pak\0rpm\0sit\0tgz\0tbz\0tbz2\0tgz\0cab\0ha\0lha\0lzh\0rar\0zoo")
+_T("\0lzma\0")_T("7z\0ace\0arc\0arj\0bz\0bz2\0deb\0lzo\0lzx\0gz\0pak\0rpm\0sit\0tgz\0tbz\0tbz2\0tgz\0cab\0ha\0lha\0lzh\0rar\0zoo")
 _T("\0zip\0jar\0ear\0war\0msi")
 _T("\0obj\0lib\0tlb\0o\0a\0so")
 _T("\0exe\0dll\0ocx\0vbx\0sfx\0sys\0awx\0com\0out\0");
@@ -197,7 +198,7 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 	CompressorInterface& compressor,
 	const RadyxOptions& options,
 	ThreadPool& threads,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	if (file_list.size() == 0) {
 		return 0;
@@ -338,7 +339,7 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 	const RadyxOptions& options,
 	ThreadPool& threads,
 	Progress& progress,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	uint_least64_t initial_size = fi.size;
 	FileReader reader(fi, options.share_deny_none);

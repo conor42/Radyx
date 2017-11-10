@@ -38,14 +38,15 @@ template<unsigned kTableBits2, unsigned kTableBits3, size_t kMatchLenMax>
 class HashChain
 {
 public:
-	HashChain(unsigned dictionary_bits_3);
-	inline void Initialize(ptrdiff_t prev_index_);
+	HashChain(unsigned dictionary_bits_3) noexcept;
+	inline void Initialize(ptrdiff_t prev_index_) noexcept;
 	template<class MatchCollection>
 	size_t GetMatches(const DataBlock& block,
 		ptrdiff_t index,
 		unsigned cycles,
 		MatchResult match,
 		MatchCollection& matches);
+
 private:
 	static const UintFast32 kHashMask2 = (1 << kTableBits2) - 1;
 	static const UintFast32 kHashMask3 = (1 << kTableBits3) - 1;
@@ -61,10 +62,12 @@ private:
 
 	HashChain(const HashChain&) = delete;
 	HashChain& operator=(const HashChain&) = delete;
+	HashChain(HashChain&&) = delete;
+	HashChain& operator=(HashChain&&) = delete;
 };
 
 template<unsigned kTableBits2, unsigned kTableBits3, size_t kMatchLenMax>
-HashChain<kTableBits2, kTableBits3, kMatchLenMax>::HashChain(unsigned dictionary_bits_3)
+HashChain<kTableBits2, kTableBits3, kMatchLenMax>::HashChain(unsigned dictionary_bits_3) noexcept
 	: hash_chain_3(new UintFast32[size_t(1) << dictionary_bits_3]),
 	chain_mask_3((1 << dictionary_bits_3) - 1)
 {
@@ -72,7 +75,7 @@ HashChain<kTableBits2, kTableBits3, kMatchLenMax>::HashChain(unsigned dictionary
 }
 
 template<unsigned kTableBits2, unsigned kTableBits3, size_t kMatchLenMax>
-inline void HashChain<kTableBits2, kTableBits3, kMatchLenMax>::Initialize(ptrdiff_t prev_index_)
+inline void HashChain<kTableBits2, kTableBits3, kMatchLenMax>::Initialize(ptrdiff_t prev_index_) noexcept
 {
 	prev_index = prev_index_;
 	// GCC is strict about passing a reference to fill()
@@ -81,12 +84,12 @@ inline void HashChain<kTableBits2, kTableBits3, kMatchLenMax>::Initialize(ptrdif
 	table_3.fill(n);
 }
 
-static inline size_t GetHash2(const uint8_t* data, unsigned bits)
+static inline size_t GetHash2(const uint8_t* data) noexcept
 {
 	return Crc32::GetHash(data[0]) ^ data[1];
 }
 
-static inline size_t GetHash3(const uint8_t* data, size_t hash, unsigned bits)
+static inline size_t GetHash3(const uint8_t* data, size_t hash) noexcept
 {
 	hash ^= size_t(data[2]) << 8;
 	return hash;
@@ -112,10 +115,10 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 	const uint8_t* data = block.data;
 	// Update hash tables and chains for any positions that were skipped
 	while (++prev_index < index) {
-		size_t hash = GetHash2(data + prev_index, kTableBits2);
+		size_t hash = GetHash2(data + prev_index);
 		hash_chain_2[prev_index & kChainMask2] = table_2[hash & kHashMask2];
 		table_2[hash & kHashMask2] = static_cast<UintFast32>(prev_index);
-		hash = GetHash3(data + prev_index, hash, kTableBits3) & kHashMask3;
+		hash = GetHash3(data + prev_index, hash) & kHashMask3;
 		hash_chain_3[prev_index & chain_mask_3] = table_3[hash];
 		table_3[hash] = static_cast<UintFast32>(prev_index);
 	}
@@ -129,7 +132,7 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 		return 0;
 	}
 	size_t max_len = 0;
-	size_t hash = GetHash2(data, kTableBits2);
+	size_t hash = GetHash2(data);
 	UintFast32 first_match = table_2[hash & kHashMask2];
 	table_2[hash & kHashMask2] = static_cast<UintFast32>(index);
 	size_t match_2 = first_match;
@@ -155,7 +158,7 @@ size_t HashChain<kTableBits2, kTableBits3, kMatchLenMax>::GetMatches(const DataB
 		break;
 	}
 	hash_chain_2[index & kChainMask2] = first_match;
-	hash = GetHash3(data, hash, kTableBits3) & kHashMask3;
+	hash = GetHash3(data, hash) & kHashMask3;
 	first_match = table_3[hash];
 	table_3[hash] = static_cast<UintFast32>(index);
 	--end_length;

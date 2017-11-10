@@ -52,7 +52,7 @@ RadyxOptions::FileSpec::FileSpec(const _TCHAR* path_, Recurse recurse_)
 	recurse = recurse_ == kRecurseAll || (recurse_ == kRecurseWildcard && Path::IsWildcard(path.c_str() + name));
 }
 
-void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path, unsigned length)
+void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path)
 {
 	if(path.compare(full_path) != 0) {
 		size_t length = path.length();
@@ -650,7 +650,7 @@ void RadyxOptions::LoadFullPaths()
 #ifdef _WIN32
 		DWORD len = GetFullPathName(fs.path.c_str(), kMaxPath, full_path.get(), NULL);
 		if (len != 0 && len < kMaxPath) {
-			fs.SetFullPath(full_path.get(), len);
+			fs.SetFullPath(full_path.get());
 		}
 #else
 		temp = fs.path;

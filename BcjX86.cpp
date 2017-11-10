@@ -33,13 +33,13 @@ namespace Radyx {
 const bool BcjX86::kMaskToAllowedStatus[8] = { 1, 1, 1, 0, 1, 0, 0, 0 };
 const uint8_t BcjX86::kMaskToBitNumber[8] = { 0, 1, 2, 2, 3, 3, 3, 3 };
 
-BcjX86::BcjX86()
+BcjX86::BcjX86() noexcept
 	: ip(0),
 	prev_mask(0)
 {
 }
 
-size_t BcjX86::Transform(MutableDataBlock& block, bool encoding)
+size_t BcjX86::Transform(MutableDataBlock& block, bool encoding) noexcept
 {
 	size_t index = block.start;
 	size_t offset_ip = ip + 5 - index;
@@ -114,13 +114,13 @@ size_t BcjX86::Transform(MutableDataBlock& block, bool encoding)
 	return index;
 }
 
-void BcjX86::Reset()
+void BcjX86::Reset() noexcept
 {
 	ip = 0;
 	prev_mask = 0;
 }
 
-CoderInfo BcjX86::GetCoderInfo() const
+CoderInfo BcjX86::GetCoderInfo() const noexcept
 {
 	return CoderInfo(nullptr, 0, 0x03030103, 1, 1);
 }

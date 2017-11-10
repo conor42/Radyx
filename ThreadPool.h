@@ -57,18 +57,27 @@ public:
 
 		Thread(const Thread&) = delete;
 		Thread& operator=(const Thread&) = delete;
+		Thread(Thread&&) = delete;
+		Thread& operator=(Thread&&) = delete;
 	};
 
 	ThreadPool(unsigned thread_count_)
 		: threads(new Thread[thread_count_]), thread_count(thread_count_) {}
-	Thread& operator[](size_t index) { return threads.get()[index]; }
-	unsigned GetCount() const { return thread_count; }
+	Thread& operator[](size_t index) {
+		return threads.get()[index];
+	}
+	unsigned GetCount() const noexcept {
+		return thread_count;
+	}
+
 private:
 	std::unique_ptr<Thread[]> threads;
 	unsigned thread_count;
 
 	ThreadPool(const ThreadPool&) = delete;
 	ThreadPool& operator=(const ThreadPool&) = delete;
+	ThreadPool(ThreadPool&&) = delete;
+	ThreadPool& operator=(ThreadPool&&) = delete;
 };
 
 }

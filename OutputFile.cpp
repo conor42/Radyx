@@ -25,10 +25,13 @@
 #include <algorithm>
 #include "OutputFile.h"
 
+namespace Radyx {
 
-OutputFile::OutputFile()
+OutputFile::OutputFile() noexcept
 	: handle(INVALID_HANDLE_VALUE),
-	error_state(std::ios_base::goodbit)
+	error_state(std::ios_base::goodbit),
+	exception_flags(0),
+	saved_exception_flags(0)
 {
 }
 
@@ -103,18 +106,19 @@ OutputFile& OutputFile::seekp(uint_least64_t pos)
 	return *this;
 }
 
-std::ios::iostate OutputFile::exceptions() const
+std::ios::iostate OutputFile::exceptions() const noexcept
 {
 	return exception_flags;
 }
 
-void OutputFile::exceptions(std::ios_base::iostate except)
+void OutputFile::exceptions(std::ios_base::iostate except) noexcept
 {
 	exception_flags = except;
+	saved_exception_flags = except;
 	error_state = std::ios_base::goodbit;
 }
 
-bool OutputFile::fail() const
+bool OutputFile::fail() const noexcept
 {
 	return (error_state & (std::ios_base::badbit | std::ios_base::failbit)) != 0;
 }
@@ -126,3 +130,31 @@ void OutputFile::AddError(std::ios_base::iostate error)
 		throw std::ios_base::failure("");
 	}
 }
+
+OutputStream& OutputFile::Put(char c)
+{
+	return put(c);
+}
+
+OutputStream& OutputFile::Write(const char* s, size_t n)
+{
+	return write(s, n);
+}
+
+void OutputFile::DisableExceptions()
+{
+	saved_exception_flags = exception_flags;
+	exception_flags = 0;
+}
+
+void OutputFile::RestoreExceptions()
+{
+	exception_flags = saved_exception_flags;
+}
+
+bool OutputFile::Fail() const noexcept
+{
+	return fail();
+}
+
+} // Radyx

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -39,16 +39,21 @@
     <ClInclude Include="..\..\Lzma2Compressor.h" />
     <ClInclude Include="..\..\Lzma2Encoder.h" />
     <ClInclude Include="..\..\Lzma2Options.h" />
+    <ClInclude Include="..\..\LzmaStates.h" />
     <ClInclude Include="..\..\MatchResult.h" />
     <ClInclude Include="..\..\MatchTable.h" />
     <ClInclude Include="..\..\MatchTableBuilder.h" />
     <ClInclude Include="..\..\OptionalSetting.h" />
     <ClInclude Include="..\..\OutputFile.h" />
+    <ClInclude Include="..\..\OutputStream.h" />
     <ClInclude Include="..\..\PackedMatchTable.h" />
     <ClInclude Include="..\..\Path.h" />
     <ClInclude Include="..\..\Progress.h" />
     <ClInclude Include="..\..\RadyxOptions.h" />
+    <ClInclude Include="..\..\RangeDecoder.h" />
     <ClInclude Include="..\..\RangeEncoder.h" />
+    <ClInclude Include="..\..\RepDistances.h" />
+    <ClInclude Include="..\..\staticvec.h" />
     <ClInclude Include="..\..\Strings.h" />
     <ClInclude Include="..\..\StructuredMatchTable.h" />
     <ClInclude Include="..\..\ThreadPool.h" />
@@ -67,12 +72,16 @@
     <ClCompile Include="..\..\IoException.cpp" />
     <ClCompile Include="..\..\Lzma2Encoder.cpp" />
     <ClCompile Include="..\..\Lzma2Options.cpp" />
+    <ClCompile Include="..\..\LzmaStates.cpp" />
     <ClCompile Include="..\..\MatchTable.cpp" />
     <ClCompile Include="..\..\MatchTableBuilder.cpp" />
     <ClCompile Include="..\..\OutputFile.cpp" />
-    <ClCompile Include="..\..\Path.cpp" />
+    <ClCompile Include="..\..\Path.cpp">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level4</WarningLevel>
+    </ClCompile>
     <ClCompile Include="..\..\Progress.cpp" />
     <ClCompile Include="..\..\RadyxOptions.cpp" />
+    <ClCompile Include="..\..\RangeDecoder.cpp" />
     <ClCompile Include="..\..\RangeEncoder.cpp" />
     <ClCompile Include="..\..\Strings.cpp" />
     <ClCompile Include="..\..\ThreadPool.cpp" />
@@ -88,26 +97,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -162,6 +171,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile />
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -187,26 +197,33 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RADYX_STATS;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>..\stdafx.h</PrecompiledHeaderFile>
-      <CallingConvention>Cdecl</CallingConvention>
+      <CallingConvention>FastCall</CallingConvention>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <AdditionalIncludeDirectories>..\utf8cpp\source;..\xxHash</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>\dev\utf8cpp\source;</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <ControlFlowGuard>false</ControlFlowGuard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>No</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>

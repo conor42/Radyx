@@ -34,7 +34,7 @@ ThreadPool::Thread::Thread()
 	argp(nullptr),
 	argi(0)
 {
-	thread = std::thread(&Thread::ThreadFn, std::ref(*this));
+	thread = std::thread(&Thread::ThreadFn, this);
 #ifdef _WIN32
 	SetThreadPriority(thread.native_handle(), THREAD_PRIORITY_BELOW_NORMAL);
 #endif
