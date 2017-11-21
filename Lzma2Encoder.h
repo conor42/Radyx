@@ -31,14 +31,13 @@
 #define RADYX_LZMA2_ENCODER_H
 
 #include "common.h"
-#include <algorithm>
 #include <array>
 #include "MatchTable.h"
 #include "RangeEncoder.h"
 #include "DataBlock.h"
 #include "AsyncWriter.h"
 #include "Lzma2Options.h"
-#include "HashChain.h"
+#include "Crc32.h"
 
 namespace Radyx {
 
@@ -159,9 +158,15 @@ private:
 	static const uint8_t kChunkAllReset = 3 << kChunkResetShift;
 	static const unsigned kRandomFilterMarginBits = 7;
 
+	static const unsigned kMaxHashDictBits = 16;
 	static const unsigned kHash2Bits = 10;
-	static const unsigned kHash3Bits = 16;
-	typedef HashChain<kHash2Bits, kHash3Bits, kMatchLenMax> LzmaHashChain;
+	static const unsigned kHash3Bits = 13;
+	static const size_t kHashMask2 = (1 << kHash2Bits) - 1;
+	static const size_t kHashMask3 = (1 << kHash3Bits) - 1;
+	static const ptrdiff_t kChainMask2 = kHashMask2;
+	static const uint_fast32_t kNullLink = UINT32_MAX;
+	static const unsigned kMaxFastBits = 10;
+	static const ptrdiff_t kMaxFastSize = 1 << kMaxFastBits;
 
 	struct RepDistances
 	{
@@ -243,8 +248,17 @@ private:
 	};
 	typedef std::array<OptimalNode, kOptimizerBufferSize> OptimalArray;
 
+	struct HashChains
+	{
+		//	std::unique_ptr<std::array<ptrdiff_t, 1 << kHash3Bits>> table_3;
+		std::array<uint_fast32_t, 1 << kHash2Bits> hash_chain_2;
+		std::array<uint_fast32_t, 1 << kMaxHashDictBits> hash_chain_3;
+	};
+
 	static void InitDistanceTable() noexcept;
 	void Reset(size_t max_distance) noexcept;
+	static inline size_t GetHash2(const uint8_t* data) noexcept;
+	static inline size_t GetHash3(const uint8_t* data, size_t hash) noexcept;
 	static inline unsigned Get2Bytes(const uint8_t* data) noexcept;
 	static inline bool Compare2Bytes(const uint8_t* data, const uint8_t* data_2) noexcept;
 	static inline size_t FindRepMatchLength(const uint8_t* data, const uint8_t* data_2, size_t start_length, size_t max_length) noexcept;
@@ -316,6 +330,13 @@ private:
 		size_t uncompressed_end,
 		OptimalArray& opt_buf) noexcept;
 
+	void HashCreate(unsigned dictionary_bits_3);
+	void HashReset() noexcept;
+	size_t HashGetMatches(const DataBlock& block,
+		ptrdiff_t index,
+		size_t max_length,
+		MatchResult match);
+
 	static uint8_t distance_table[1 << kFastDistBits];
 
 	unsigned lc;
@@ -339,10 +360,16 @@ private:
 	unsigned dist_slot_prices[kNumLenToPosStates][kDistTableSizeMax];
 	unsigned distance_prices[kNumLenToPosStates][kNumFullDistances];
 
-	std::unique_ptr<LzmaHashChain> hash_chain;
+	bool needed_random_check;
+
 	MatchCollection<kMatchLenMin, kMatchLenMax> matches;
 
-	bool needed_random_check;
+	std::unique_ptr<HashChains> hash_buf;
+	ptrdiff_t chain_mask_3;
+	ptrdiff_t hash_dict_size;
+	ptrdiff_t hash_prev_index;
+	std::array<uint_fast32_t, 1 << kHash2Bits> table_2;
+	std::array<uint_fast32_t, 1 << kHash3Bits> table_3;
 
 	static class init_
 	{
@@ -372,6 +399,17 @@ void Lzma2Encoder::RepDistances::operator=(const RepDistances& rvalue) noexcept
 	}
 }
 __pragma(warning(pop))
+
+size_t Lzma2Encoder::GetHash2(const uint8_t* data) noexcept
+{
+	return Crc32::GetHash(data[0]) ^ data[1];
+}
+
+size_t Lzma2Encoder::GetHash3(const uint8_t* data, size_t hash) noexcept
+{
+	hash ^= size_t(data[2]) << 8;
+	return hash;
+}
 
 unsigned Lzma2Encoder::Get2Bytes(const uint8_t* data) noexcept
 {
@@ -774,10 +812,13 @@ size_t Lzma2Encoder::Encode(MatchTable<MatchTableT>& match_table,
 	Reset(block.end);
 	if (encoder_mode == Lzma2Options::kBestMode) {
 		// Create a hash chain to put the encoder into hybrid mode
-		if (hash_chain.get() == nullptr) {
-			hash_chain.reset(new LzmaHashChain(options.second_dict_bits));
+		if (hash_dict_size == 0) {
+			HashCreate(options.second_dict_bits);
 		}
-		hash_chain->Initialize(start >= (1 << kHash2Bits) ? start - (1 << kHash2Bits) : -1);
+		else {
+			HashReset();
+		}
+		hash_prev_index = (start >= (1UL << kHash2Bits)) ? start - std::min((ptrdiff_t(1) << kHash2Bits), hash_dict_size) : -1;
 	}
 	uint8_t out_buffer[kChunkBufferSize];
 	uint8_t* out_dest = out_buffer;

@@ -22,7 +22,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
 #include "OutputFile.h"
 
 namespace Radyx {
@@ -70,18 +69,19 @@ OutputFile& OutputFile::put(char c)
 	return write(&c, 1);
 }
 
-OutputFile& OutputFile::write(const char* s, size_t n)
+OutputFile& OutputFile::write(const void* s, size_t n)
 {
 	while (!g_break && n != 0) {
 		// Avoid possible errors from large writes over a network in WinXP
 		DWORD to_write = static_cast<DWORD>(std::min(n, size_t(32) * 1024 * 1024 - 32768));
+		const char* src = reinterpret_cast<const char*>(s);
 		DWORD written;
-		if (WriteFile(handle, s, to_write, &written, NULL) == FALSE) {
+		if (WriteFile(handle, src, to_write, &written, NULL) == FALSE) {
 			AddError(std::ios_base::badbit);
 			break;
 		}
 		n -= written;
-		s += written;
+		src += written;
 	}
 	return *this;
 }
@@ -136,7 +136,7 @@ OutputStream& OutputFile::Put(char c)
 	return put(c);
 }
 
-OutputStream& OutputFile::Write(const char* s, size_t n)
+OutputStream& OutputFile::Write(const void* s, size_t n)
 {
 	return write(s, n);
 }

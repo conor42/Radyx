@@ -53,6 +53,8 @@ public:
 	virtual size_t Finalize(OutputStream& out_stream) = 0;
 	// 7-zip coder info
 	virtual CoderInfo GetCoderInfo() const = 0;
+	// Reset between units
+	virtual void Reset() = 0;
 	// Estimated memory usage
 	virtual size_t GetMemoryUsage(unsigned thread_count) const = 0;
 };

@@ -36,9 +36,13 @@ namespace Radyx {
 class BcjX86 : public BcjTransform
 {
 public:
-	BcjX86() noexcept;
-	size_t Transform(MutableDataBlock& block, bool encoding) noexcept;
+	BcjX86(ArchiveCompressor* files_) noexcept;
+	size_t GetMaxOverrun() const noexcept;
+	size_t Encode(uint8_t* buffer, size_t main_end, size_t block_end);
+	size_t Decode(uint8_t* buffer, size_t main_end, size_t block_end);
+	size_t Transform(uint8_t* buffer, size_t main_end, size_t block_end, bool encoding);
 	void Reset() noexcept;
+	bool DidEncode() const noexcept;
 	CoderInfo GetCoderInfo() const noexcept;
 
 private:
@@ -49,8 +53,11 @@ private:
 		return uint8_t(b + 1) < 2;
 	}
 
+	ArchiveCompressor* files;
 	size_t ip;
 	size_t prev_mask;
+	size_t overrun;
+	bool did_encode;
 };
 
 }

@@ -22,7 +22,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
 #include <cstring>
 #include "common.h"
 #include "UnitCompressor.h"
@@ -52,64 +51,32 @@ inline void throw_write_exception(int /*os_error*/)
 
 UnitCompressor::UnitCompressor(size_t dictionary_size_,
 	size_t max_buffer_overrun,
+	size_t read_extra_,
 	size_t overlap_,
-	bool do_bcj,
 	bool async_read_)
-	: dictionary_size(dictionary_size_),
-#ifdef RADYX_BCJ
-	overlap((overlap_ > BcjTransform::kMaxUnprocessed) ? overlap_ : BcjTransform::kMaxUnprocessed),
-#else
-	overlap(overlap_),
-#endif
-	unprocessed(0),
+	: data_buffers{ { CoderBuffer(dictionary_size_, max_buffer_overrun, read_extra_, overlap_),
+		CoderBuffer(async_read_ ? dictionary_size_ : 0, max_buffer_overrun, read_extra_, overlap_)} },
 	buffer_index(0),
 	async_read(async_read_),
 	working(false)
 {
-#ifndef RADYX_BCJ
-	assert(!do_bcj);
-#endif
-	data_buffer[0].reset(new uint8_t[dictionary_size_ + max_buffer_overrun]);
-	if (async_read_) {
-		data_buffer[1].reset(new uint8_t[dictionary_size_ + max_buffer_overrun]);
-	}
-	Reset(do_bcj, async_read_);
+	Reset(async_read_);
 }
 
-void UnitCompressor::Reset(bool do_bcj)
+void UnitCompressor::Reset()
 {
-	Reset(do_bcj, async_read);
+	Reset(async_read);
 }
 
-void UnitCompressor::Reset(bool do_bcj, bool async_read_)
+void UnitCompressor::Reset(bool async_read_)
 {
 	CheckError();
 	WaitCompletion();
-	block_start = 0;
-	block_end = 0;
 	unpack_size = 0;
 	pack_size = 0;
-	unprocessed = 0;
-	do_bcj; // suppress warning
-#ifdef RADYX_BCJ
-	if (do_bcj) {
-		if (bcj.get() == nullptr) {
-			bcj.reset(new BcjX86);
-		}
-		else {
-			bcj->Reset();
-		}
-	}
-	else bcj.reset(nullptr);
-#endif
-	async_read = async_read_ && data_buffer[1].get() != nullptr;
+	async_read = async_read_ && data_buffers[1];
 	buffer_index = 0;
-}
-
-size_t UnitCompressor::GetAvailableSpace() const
-{
-	CheckError();
-	return dictionary_size - block_end;
+	data_buffers[0].Reset();
 }
 
 void UnitCompressor::ThreadFn(void* pwork, int /*unused*/)
@@ -149,77 +116,79 @@ void UnitCompressor::CheckError() const
 	}
 }
 
-void UnitCompressor::Compress(CompressorInterface& compressor,
+void UnitCompressor::Write(const void* data,
+	size_t count,
+	CompressorInterface& compressor,
+	ThreadPool& threads,
+	OutputStream& out_stream)
+{
+	const char* src = reinterpret_cast<const char*>(data);
+	while (count && !g_break) {
+		size_t to_write = std::min(count, data_buffers[buffer_index].GetAvailableSpace());
+		data_buffers[buffer_index].Write(src, to_write);
+		if (to_write < count) {
+			Compress(nullptr, compressor, threads, out_stream, nullptr);
+			Shift();
+		}
+		src += to_write;
+		count -= to_write;
+	}
+}
+
+void UnitCompressor::Compress(FilterList* filters,
+	CompressorInterface& compressor,
 	ThreadPool& threads,
 	OutputStream& out_stream,
 	Progress* progress)
 {
 	CheckError();
-	if (block_end > block_start - unprocessed)
+	if (data_buffers[buffer_index].Unprocessed())
 	{
-		size_t processed_end = block_end;
-		MutableDataBlock mut_block(data_buffer[buffer_index].get(), block_start - unprocessed, block_end);
-#ifdef RADYX_BCJ
-		if (bcj.get() != nullptr) {
-			processed_end = bcj->Transform(mut_block, true);
-			// If the buffer is not full, there is no more data for this unit so
-			// process it to the end.
-			if (block_end < dictionary_size) {
-				processed_end = block_end;
-			}
-			unprocessed = block_end - processed_end;
-		}
-#endif
+		DataBlock data_block = data_buffers[buffer_index].RunFilters(filters);
 		if (async_read) {
 			WaitCompletion();
 			args = ThreadArgs(&compressor,
 				&threads,
 				&out_stream,
 				progress,
-				DataBlock(data_buffer[buffer_index].get(), mut_block.start, processed_end));
+				data_block);
 			working = true;
 			compress_thread.SetWork(ThreadFn, this, 0);
 			buffer_index ^= 1;
 		}
 		else {
-			DataBlock data_block(data_buffer[0].get(), mut_block.start, processed_end);
 			pack_size += compressor.Compress(data_block, threads, out_stream, error_code, progress);
 			CheckError();
 		}
-		unpack_size += block_end - block_start;
+		unpack_size += data_block.Length();
 	}
 }
 
 void UnitCompressor::Shift()
 {
 	CheckError();
-	if (block_end > overlap) {
-		if (async_read) {
-			const uint8_t* data = data_buffer[buffer_index ^ 1].get();
-			memcpy(data_buffer[buffer_index].get(), data + block_end - overlap, overlap);
-		}
-		else {
-			uint8_t* data = data_buffer[0].get();
-			memmove(data, data + block_end - overlap, overlap);
-		}
-		block_start = overlap;
+	if (async_read) {
+		data_buffers[buffer_index].Shift(data_buffers[buffer_index ^ 1]);
+
 	}
-	block_end = block_start;
+	else {
+		data_buffers[buffer_index].Shift();
+	}
 }
 
 void UnitCompressor::Write(OutputStream& out_stream)
 {
 	CheckError();
-	size_t to_write = block_end - block_start;
-	out_stream.Write(reinterpret_cast<const char*>(data_buffer[buffer_index].get() + block_start), to_write);
+	DataBlock data_block = data_buffers[buffer_index].GetAllData();
+	size_t to_write = data_block.Length();
+	out_stream.Write(data_block.data + data_block.start, to_write);
 	if (!g_break && out_stream.Fail()) {
 		error_code.LoadOsErrorCode();
 		throw_write_exception(error_code.os_code);
 	}
 	unpack_size += to_write;
 	pack_size += to_write;
-	block_start = 0;
-	block_end = 0;
+	data_buffers[buffer_index].Reset();
 }
 
 }

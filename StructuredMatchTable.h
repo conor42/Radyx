@@ -66,8 +66,13 @@ public:
 	inline size_t CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const noexcept;
 	static inline size_t GetMemoryUsage(size_t dictionary_size) noexcept;
 
+	size_t GetDictionarySize() const noexcept {
+		return dictionary_size_;
+	}
+
 private:
 	std::unique_ptr<MatchUnit[]> match_table;
+	size_t dictionary_size_;
 
 	StructuredMatchTable(const StructuredMatchTable&) = delete;
 	StructuredMatchTable& operator=(const StructuredMatchTable&) = delete;
@@ -76,7 +81,8 @@ private:
 };
 
 StructuredMatchTable::StructuredMatchTable(size_t dictionary_size)
-	: match_table(new MatchUnit[(dictionary_size >> kUnitBits) + 1])
+	: match_table(new MatchUnit[(dictionary_size >> kUnitBits) + 1]),
+	dictionary_size_(dictionary_size)
 {
 }
 

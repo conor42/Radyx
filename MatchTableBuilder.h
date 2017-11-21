@@ -40,6 +40,7 @@ class MatchTableBuilder
 {
 public:
 	static const UintFast32 kNullLink = UINT32_MAX;
+	static const UintFast32 kBufferLinkMask = 0xFFFFFF;
 	static const unsigned kRptCheckBits = 5;
 	static const unsigned kRptCheckMask = (1 << kRptCheckBits) - 1;
 
@@ -64,7 +65,7 @@ public:
 
 public:
 	MatchTableBuilder() {}
-	void AllocateMatchBuffer(size_t match_buffer_size);
+	void AllocateMatchBuffer(size_t match_buffer_size, unsigned match_buffer_overlap_);
 
 	template<class MatchTableT>
 	void RecurseLists(const DataBlock& block,
@@ -90,6 +91,9 @@ private:
 	static const int kMaxOverlappingRpt = 7;
 	static const unsigned kMinBufferedListSize = 30;
 	static const unsigned kMaxBruteForceListSize = 6;
+	static const unsigned kMaxBufferedMultiplier = 16;
+	static const unsigned kBufferedOverlapBits[2];
+	static const UintFast32 kMaxOverlapExtendDist = 0x10000;
 
 	struct ListTail
 	{
@@ -99,9 +103,7 @@ private:
 	struct StringMatch
 	{
 		UintFast32 from;
-		uint8_t pad;
-		uint8_t length;
-		uint8_t chars[2];
+		uint8_t chars[4];
 		UintFast32 next;
 		StringMatch() {}
 	};
@@ -109,15 +111,22 @@ private:
 	{
 		size_t index;
 		const uint8_t* data_src;
-		unsigned radix_16;
+		uint8_t chars[4];
 	};
 
 	static inline void Copy2Bytes(uint8_t* dest, const uint8_t* src) noexcept;
+	static inline void Copy4Bytes(uint8_t* dest, const uint8_t* src) noexcept;
 
 	template<class MatchTableT>
 	void RecurseListsBuffered(const DataBlock& block,
 		MatchTableT& match_table,
 		size_t link,
+		uint8_t depth,
+		uint8_t max_depth,
+		UintFast32 list_count,
+		size_t stack_base) noexcept;
+
+	void RecurseListsBuffered(const DataBlock& block,
 		uint8_t depth,
 		uint8_t max_depth,
 		UintFast32 list_count,
@@ -158,6 +167,7 @@ private:
 		StringMatch* match_buffer,
 		size_t index,
 		size_t list_count,
+		size_t slot,
 		size_t depth,
 		size_t max_depth) noexcept;
 
@@ -178,6 +188,7 @@ private:
 	std::array<ListHead, kStackSize> stack;
 	// Buffer for buffered list processing
 	std::vector<StringMatch> match_buffer_;
+	unsigned match_buffer_overlap;
 
 	MatchTableBuilder(const MatchTableBuilder&) = delete;
 	MatchTableBuilder(MatchTableBuilder&&) = delete;
@@ -304,6 +315,19 @@ void MatchTableBuilder::Copy2Bytes(uint8_t* dest, const uint8_t* src) noexcept
 #endif
 }
 
+void MatchTableBuilder::Copy4Bytes(uint8_t* dest, const uint8_t* src) noexcept
+{
+#ifndef DISALLOW_UNALIGNED_ACCESS
+	(reinterpret_cast<uint32_t*>(dest))[0] = (reinterpret_cast<const uint32_t*>(src))[0];
+#else
+	dest[0] = src[0];
+	dest[1] = src[1];
+	dest[2] = src[2];
+	dest[3] = src[3];
+#endif
+
+}
+
 // Copy the list into a buffer and recurse it there. This decreases cache misses and allows
 // data characters to be loaded every second pass and stored for use in the next 2 passes
 template<class MatchTableT>
@@ -312,209 +336,82 @@ void MatchTableBuilder::RecurseListsBuffered(const DataBlock& block,
 	size_t link,
 	uint8_t depth,
 	uint8_t max_depth,
-	UintFast32 list_count,
+	UintFast32 orig_list_count,
 	size_t stack_base) noexcept
 {
+	if (orig_list_count < 2 || match_buffer_.size() < 2)
+		return;
 	// Faster than vector operator[] and possible because the vector is not reallocated in this method
 	StringMatch* match_buffer = match_buffer_.data();
-	const size_t block_start = block.start;
 	// Create an offset data buffer pointer for reading the next bytes
 	const uint8_t* data_src = block.data + depth;
-	size_t count = 0;
-	for (; count < list_count; ++count) {
-		// Get 2 data characters for later. This doesn't block on a cache miss.
-		Copy2Bytes(match_buffer[count].chars, data_src + link);
-		// Record the actual location of this suffix
-		match_buffer[count].from = static_cast<UintFast32>(link);
-		// Next
-		link = match_table.GetMatchLink(link);
-		// Initialize the next link
-		match_buffer[count].next = static_cast<UintFast32>(count + 1);
-		// Match length
-		match_buffer[count].length = depth;
-	}
-	// Make the last element circular so pre-loading doesn't read past the end.
-	match_buffer[count - 1].next = static_cast<UintFast32>(count - 1);
-	// Clear the bool flags
-	flag_table_8.Reset();
-	++depth;
-	++data_src;
-	// The last element is done separately and won't be copied back at the end
-	--count;
-	size_t st_index = stack_base;
-	size_t prev_index_8[kRadixTableSizeSmall];
-	size_t index = 0;
+	size_t start = 0;
 	do {
-		link = match_buffer[index].from;
-		size_t radix_8 = match_buffer[index].chars[0];
-		// Seen this char before?
-		if (flag_table_8.IsSet(radix_8)) {
-			const size_t prev = prev_index_8[radix_8];
-			++sub_tails[radix_8].list_count;
-			// Link the previous occurrence to this one and record the new length
-			match_buffer[prev].length = depth;
-			match_buffer[prev].next = static_cast<UintFast32>(index);
+		UintFast32 list_count = static_cast<UintFast32>(start + orig_list_count);
+		UintFast32 overlap = 0;
+		if (list_count > match_buffer_.size()) {
+			list_count = static_cast<UintFast32>(match_buffer_.size());
+			overlap = list_count >> match_buffer_overlap;// kBufferedOverlapBits[depth >= 4];
 		}
-		else {
-			flag_table_8.Set(radix_8);
-			sub_tails[radix_8].list_count = 1;
-			// Add the new sub list to the stack
-			stack[st_index].head = static_cast<UintFast32>(index);
-			// This will be converted to a count at the end
-			stack[st_index].count = static_cast<UintFast32>(radix_8);
-			++st_index;
+		size_t count = start;
+		for (; count < list_count; ++count) {
+			// Get 2 data characters for later. This doesn't block on a cache miss.
+			Copy4Bytes(match_buffer[count].chars, data_src + link);
+			// Record the actual location of this suffix
+			match_buffer[count].from = static_cast<UintFast32>(link);
+			// Next
+			link = match_table.GetMatchLink(link);
+			// Initialize the next link
+			match_buffer[count].next = static_cast<UintFast32>(count + 1) | (UintFast32(depth) << 24);
 		}
-		prev_index_8[radix_8] = index;
-		++index;
-	} while (index < count);
-	// Do the last element
-	link = match_buffer[index].from;
-	size_t radix_8 = match_buffer[index].chars[0];
-	// Nothing to do if there was no previous
-	if (flag_table_8.IsSet(radix_8)) {
-		const size_t prev = prev_index_8[radix_8];
-		++sub_tails[radix_8].list_count;
-		match_buffer[prev].length = depth;
-		match_buffer[prev].next = static_cast<UintFast32>(index);
-	}
-	// Convert radix values on the stack to counts
-	for (size_t j = stack_base; j < st_index; ++j) {
-		stack[j].count = sub_tails[stack[j].count].list_count;
-	}
-	while (!g_break && st_index > stack_base) {
-		// Pop an item off the stack
-		--st_index;
-		list_count = stack[st_index].count;
-		if (list_count < 2) {
-			// Nothing to match with
-			continue;
-		}
-		// Check stack space. The first comparison is unnecessary but it's a constant so should be faster
-		if (st_index > stack.size() - kRadixTableSizeSmall
-			&& st_index > stack.size() - list_count)
-		{
-			// Stack may not be able to fit all possible new items. This is very rare.
-			continue;
-		}
-		index = stack[st_index].head;
-		link = match_buffer[index].from;
-		if (link < block_start) {
-			// Chain starts in the overlap region which is already encoded
-			continue;
-		}
-		depth = match_buffer[index].length;
-		// Check for overlapping repeated matches. These are rare but potentially a big time waster.
-		if ((depth & kRptCheckMask) == 0 && list_count > kMaxOverlappingRpt + 1) {
-			list_count = RepeatCheck(match_buffer, index, depth, list_count);
-		}
-		if (list_count <= kMaxBruteForceListSize) {
-			// Quicker to use brute force, each string compared with all previous strings
-			BruteForceBuffered(block,
-				match_buffer,
-				index,
-				list_count,
-				depth,
-				max_depth);
-			continue;
-		}
-		size_t slot = depth & 1;
-		++depth;
-		// Update the offset data buffer pointer
-		data_src = block.data + depth;
-		flag_table_8.Reset();
-		// Last pass is done separately
-		if (depth < max_depth) {
-			size_t prev_st_index = st_index;
-			// Last element done separately
-			--list_count;
-			// slot is the char cache index. If 1 then chars need to be loaded.
-			if (slot != 0) do {
-				radix_8 = match_buffer[index].chars[1];
-				const size_t next_index = match_buffer[index].next;
-				// Pre-load the next link and data bytes to avoid waiting for RAM access
-				Copy2Bytes(match_buffer[index].chars, data_src + link);
-				const size_t next_link = match_buffer[next_index].from;
-				if (flag_table_8.IsSet(radix_8)) {
-					const size_t prev = prev_index_8[radix_8];
-					++sub_tails[radix_8].list_count;
-					match_buffer[prev].length = depth;
-					match_buffer[prev].next = static_cast<UintFast32>(index);
+		// Make the last element circular so pre-loading doesn't read past the end.
+		match_buffer[count - 1].next = static_cast<UintFast32>(count - 1) | (UintFast32(depth) << 24);
+		if (overlap > 1) {
+//			UintFast32 overlap_max = list_count >> (match_buffer_overlap - 2);// overlap << (1 + (depth < 4));
+			UintFast32 i = list_count - overlap;
+			if (match_buffer[i - 1].from - match_buffer[i].from < depth) {
+				for (; i < list_count - 1; ++i) {
+					UintFast32 dist = match_buffer[i].from - match_buffer[i + 1].from;
+					if (dist >= depth) {
+						break;
+					}
 				}
-				else {
-					flag_table_8.Set(radix_8);
-					sub_tails[radix_8].list_count = 1;
-					stack[st_index].head = static_cast<UintFast32>(index);
-					stack[st_index].count = static_cast<UintFast32>(radix_8);
-					++st_index;
-				}
-				prev_index_8[radix_8] = index;
-				index = next_index;
-				link = next_link;
-			} while (--list_count != 0);
-			else do {
-				radix_8 = match_buffer[index].chars[0];
-				const size_t next_index = match_buffer[index].next;
-				// Pre-load the next link to avoid waiting for RAM access
-				const size_t next_link = match_buffer[next_index].from;
-				if (flag_table_8.IsSet(radix_8)) {
-					const size_t prev = prev_index_8[radix_8];
-					++sub_tails[radix_8].list_count;
-					match_buffer[prev].length = depth;
-					match_buffer[prev].next = static_cast<UintFast32>(index);
-				}
-				else {
-					flag_table_8.Set(radix_8);
-					sub_tails[radix_8].list_count = 1;
-					stack[st_index].head = static_cast<UintFast32>(index);
-					stack[st_index].count = static_cast<UintFast32>(radix_8);
-					++st_index;
-				}
-				prev_index_8[radix_8] = index;
-				index = next_index;
-				link = next_link;
-			} while (--list_count != 0);
-			radix_8 = match_buffer[index].chars[slot];
-			if (flag_table_8.IsSet(radix_8)) {
-				if (slot != 0) Copy2Bytes(match_buffer[index].chars, data_src + link);
-				const size_t prev = prev_index_8[radix_8];
-				++sub_tails[radix_8].list_count;
-				match_buffer[prev].length = depth;
-				match_buffer[prev].next = static_cast<UintFast32>(index);
 			}
-			for (size_t j = prev_st_index; j < st_index; ++j) {
-				stack[j].count = sub_tails[stack[j].count].list_count;
+/*			else if (match_buffer[i].from - match_buffer[i + 1].from >= depth) {
+				for (; i > list_count - overlap_max; --i) {
+					UintFast32 dist = match_buffer[i].from - match_buffer[list_count - 1].from;
+					if (dist >= (1 << 13)) {
+						break;
+					}
+				}
+			}*/
+			overlap = std::min(list_count - i, static_cast<UintFast32>(start) + orig_list_count - list_count + kMinBufferedListSize / 2);
+		}
+		RecurseListsBuffered(block, depth, max_depth, list_count, stack_base);
+		orig_list_count -= static_cast<UintFast32>(list_count - start);
+		if (!g_break) {
+			// Copy everything back, except the last link which never changes, and any extra overlap
+			count -= overlap + (overlap == 0);
+			for (size_t index = 0; index < count; ++index) {
+				size_t from = match_buffer[index].from;
+				if (from < block.start)
+					return;
+				size_t next = match_buffer[index].next & kBufferLinkMask;
+				match_table.SetMatchLinkAndLength(from, match_buffer[next].from, match_buffer[index].next >> 24);
 			}
 		}
-		else {
-			// The last pass at max_depth
-			do {
-				radix_8 = match_buffer[index].chars[slot];
-				const size_t next_index = match_buffer[index].next;
-				// Pre-load the next link.
-				// The last element in match_buffer is circular so this is never an access violation.
-				const size_t next_link = match_buffer[next_index].from;
-				if (flag_table_8.IsSet(radix_8)) {
-					const size_t prev = prev_index_8[radix_8];
-					match_buffer[prev].length = depth;
-					match_buffer[prev].next = static_cast<UintFast32>(index);
-				}
-				else {
-					flag_table_8.Set(radix_8);
-				}
-				prev_index_8[radix_8] = index;
-				index = next_index;
-				link = next_link;
-			} while (--list_count != 0);
+		start = 0;
+		if (overlap) {
+			size_t dest = 0;
+			for (size_t src = list_count - overlap; src < list_count; ++src) {
+				match_buffer[dest].from = match_buffer[src].from;
+				Copy4Bytes(match_buffer[dest].chars, data_src + match_buffer[src].from);
+				match_buffer[dest].next = static_cast<UintFast32>(dest + 1) | (UintFast32(depth) << 24);
+				++dest;
+			}
+			start = dest;
 		}
-	}
-	if (!g_break) {
-		// Copy everything back, except the last link which never changes
-		for (index = 0; index < count; ++index) {
-			size_t from = match_buffer[index].from;
-			size_t next = match_buffer[index].next;
-			match_table.SetMatchLinkAndLength(from, match_buffer[next].from, match_buffer[index].length);
-		}
-	}
+	} while (orig_list_count != 0 && !g_break);
 }
 
 template<class MatchTableT>
@@ -669,7 +566,7 @@ void MatchTableBuilder::RecurseListStack(const DataBlock& block,
 		// The current depth
 		UintFast32 depth = match_table.GetMatchLength(link);
 		if (list_count >= kMinBufferedListSize
-			&& list_count <= match_buffer_.size()
+//			&& list_count <= match_buffer_.size() * kMaxBufferedMultiplier / 16UL
 			&& depth <= max_buffered_depth)
 		{
 			// Small enough to fit in the buffer now

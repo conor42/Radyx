@@ -26,12 +26,12 @@
 #define RADYX_UNIT_COMPRESSOR_H
 
 #include "common.h"
+#include <array>
+#include "CoderBuffer.h"
+#include "InPlaceFilter.h"
 #include "OutputStream.h"
 #include "ThreadPool.h"
 #include "CompressorInterface.h"
-#ifdef RADYX_BCJ
-#include "BcjX86.h"
-#endif
 #include "Progress.h"
 #include "ErrorCode.h"
 
@@ -40,21 +40,25 @@ namespace Radyx {
 class UnitCompressor
 {
 public:
-	UnitCompressor(size_t dictionary_size_, size_t max_buffer_overrun, size_t overlap_, bool do_bcj, bool async_read_);
-	void Reset(bool do_bcj);
-	void Reset(bool do_bcj, bool async_read_);
-	size_t GetAvailableSpace() const;
-
-	uint8_t* GetAvailableBuffer() noexcept {
-		return data_buffer[buffer_index].get() + block_end;
+	UnitCompressor(size_t dictionary_size_, size_t max_buffer_overrun, size_t read_extra_, size_t overlap_, bool async_read_);
+	void Reset();
+	void Reset(bool async_read_);
+	bool IsFull() const {
+		return data_buffers[buffer_index].IsFull();
 	}
-	void AddByteCount(size_t count) noexcept {
-		block_end += count;
+	size_t Read(ArchiveStreamIn* inStream) {
+		return data_buffers[buffer_index].Read(inStream);
 	}
-	void RemoveByteCount(size_t count) noexcept {
-		block_end -= count;
+	void Put(uint8_t c) {
+		data_buffers[buffer_index].Put(c);
 	}
-	void Compress(CompressorInterface& compressor,
+	void Write(const void* data,
+		size_t count,
+		CompressorInterface& compressor,
+		ThreadPool& threads,
+		OutputStream& out_stream);
+	void Compress(FilterList* filters,
+		CompressorInterface& compressor,
 		ThreadPool& threads,
 		OutputStream& out_stream,
 		Progress* progress);
@@ -64,7 +68,7 @@ public:
 	inline void WaitCompletion();
 
 	bool Unprocessed() const noexcept {
-		return block_end > block_start - unprocessed;
+		return data_buffers[buffer_index].Unprocessed();
 	}
 	size_t GetUnpackSize() const noexcept {
 		return unpack_size;
@@ -72,16 +76,8 @@ public:
 	size_t GetPackSize() const noexcept {
 		return pack_size;
 	}
-#ifdef RADYX_BCJ
-	bool UsedBcj() const noexcept {
-		return bcj.get() != nullptr;
-	}
-	CoderInfo GetBcjCoderInfo() const noexcept {
-		return bcj->GetCoderInfo();
-	}
-#endif
 	size_t GetMemoryUsage() const noexcept {
-		return dictionary_size * (1 + async_read);
+		return data_buffers[0].GetMainBufferSize() * (1 + async_read);
 	}
 
 private:
@@ -103,17 +99,9 @@ private:
 
 	static void ThreadFn(void* pwork, int unused);
 
-	std::unique_ptr<uint8_t[]> data_buffer[2];
-#ifdef RADYX_BCJ
-	std::unique_ptr<BcjTransform> bcj;
-#endif
-	size_t dictionary_size;
-	size_t block_start;
-	size_t block_end;
-	size_t overlap;
+	std::array<CoderBuffer, 2> data_buffers;
 	size_t unpack_size;
 	size_t pack_size;
-	size_t unprocessed;
 	ThreadPool::Thread compress_thread;
 	ThreadArgs args;
 	size_t buffer_index;

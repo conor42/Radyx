@@ -42,7 +42,7 @@ public:
 	virtual ~OutputFile();
 	void open(const _TCHAR* filename, bool no_caching = false);
 	OutputFile& put(char c);
-	OutputFile& write(const char* s, size_t n);
+	OutputFile& write(const void* s, size_t n);
 	uint_least64_t tellp();
 	OutputFile& seekp(uint_least64_t pos);
 	std::ios_base::iostate exceptions() const noexcept;
@@ -50,7 +50,8 @@ public:
 	bool fail() const noexcept;
 
 	OutputStream& Put(char c);
-	OutputStream& Write(const char* s, size_t n);
+	OutputStream& Write(const void* s, size_t n);
+	void Flush() {}
 	void DisableExceptions();
 	void RestoreExceptions();
 	bool Fail() const noexcept;

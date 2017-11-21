@@ -27,12 +27,12 @@
 
 namespace Radyx {
 
-Progress::Progress(uint_least64_t total_bytes_, unsigned encode_weight_)
-	: total_bytes(total_bytes_),
+Progress::Progress()
+	: total_bytes(0),
 	progress_bytes(0),
-	next_update(total_bytes_ / 100),
-	build_weight(kWeightUnitTotal - encode_weight_),
-	encode_weight(encode_weight_),
+	next_update(100),
+	build_weight(0),
+	encode_weight(0),
 	display_length(0)
 {
 }
@@ -40,6 +40,14 @@ Progress::Progress(uint_least64_t total_bytes_, unsigned encode_weight_)
 Progress::~Progress()
 {
 	Erase();
+}
+
+void Progress::Init(uint_least64_t total_bytes_, unsigned encode_weight_)
+{
+	total_bytes = total_bytes_;
+	next_update = total_bytes_ / 100;
+	build_weight = kWeightUnitTotal - encode_weight_;
+	encode_weight = encode_weight_;
 }
 
 unsigned Progress::ShowLocked()

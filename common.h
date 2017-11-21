@@ -31,6 +31,7 @@
 #include <cinttypes>
 #include <thread>
 #include <cassert>
+#include <algorithm>
 
 namespace Radyx {
 
@@ -41,6 +42,8 @@ typedef uint_fast64_t UintFast32;
 #else
 typedef uint_least32_t UintFast32;
 #endif
+
+const size_t kBoundaryMask = ~(size_t(7));
 
 #if defined(RADYX_STATS) && defined(InterlockedAdd64)
 

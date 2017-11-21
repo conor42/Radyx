@@ -56,6 +56,9 @@ public:
 	inline void RestrictMatchLength(size_t index, UintFast32 length) noexcept;
 	inline size_t CalcMatchBufferSize(size_t block_size, unsigned extra_thread_count) const noexcept;
 
+	size_t GetDictionarySize() const noexcept {
+		return dictionary_size_;
+	}
 	void SetNull(size_t index) noexcept {
 		match_table[index] = kNullLink;
 	}
@@ -71,6 +74,7 @@ public:
 
 private:
 	std::unique_ptr<UintFast32[]> match_table;
+	size_t dictionary_size_;
 
 	PackedMatchTable(const PackedMatchTable&) = delete;
 	PackedMatchTable& operator=(const PackedMatchTable&) = delete;
@@ -78,7 +82,9 @@ private:
 	PackedMatchTable& operator=(PackedMatchTable&&) = delete;
 };
 
-PackedMatchTable::PackedMatchTable(size_t dictionary_size) : match_table(new UintFast32[dictionary_size])
+PackedMatchTable::PackedMatchTable(size_t dictionary_size)
+	: match_table(new UintFast32[dictionary_size]),
+	dictionary_size_(dictionary_size)
 {
 	if (dictionary_size > kMaxDictionary) {
 		throw std::runtime_error("Internal error: incorrect match table type.");

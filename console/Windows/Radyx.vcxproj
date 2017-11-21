@@ -20,10 +20,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ArchiveCompressor.h" />
+    <ClInclude Include="..\..\ArchiveStreamIn.h" />
     <ClInclude Include="..\..\AsyncWriter.h" />
     <ClInclude Include="..\..\BcjTransform.h" />
     <ClInclude Include="..\..\BcjX86.h" />
     <ClInclude Include="..\..\CharType.h" />
+    <ClInclude Include="..\..\CoderBuffer.h" />
     <ClInclude Include="..\..\CoderInfo.h" />
     <ClInclude Include="..\..\common.h" />
     <ClInclude Include="..\..\CompressedUint64.h" />
@@ -35,6 +37,7 @@
     <ClInclude Include="..\..\ErrorCode.h" />
     <ClInclude Include="..\..\FlagTable.h" />
     <ClInclude Include="..\..\HashChain.h" />
+    <ClInclude Include="..\..\InPlaceFilter.h" />
     <ClInclude Include="..\..\IoException.h" />
     <ClInclude Include="..\..\Lzma2Compressor.h" />
     <ClInclude Include="..\..\Lzma2Encoder.h" />
@@ -49,6 +52,7 @@
     <ClInclude Include="..\..\PackedMatchTable.h" />
     <ClInclude Include="..\..\Path.h" />
     <ClInclude Include="..\..\Progress.h" />
+    <ClInclude Include="..\..\RadyxLzma2Enc.h" />
     <ClInclude Include="..\..\RadyxOptions.h" />
     <ClInclude Include="..\..\RangeDecoder.h" />
     <ClInclude Include="..\..\RangeEncoder.h" />
@@ -80,6 +84,7 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level4</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\..\Progress.cpp" />
+    <ClCompile Include="..\..\RadyxLzma2Enc.cpp" />
     <ClCompile Include="..\..\RadyxOptions.cpp" />
     <ClCompile Include="..\..\RangeDecoder.cpp" />
     <ClCompile Include="..\..\RangeEncoder.cpp" />

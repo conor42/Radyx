@@ -32,7 +32,7 @@ void AsyncWriter::ThreadFn(void* pwork, int /*unused*/)
 {
 	AsyncWriter* writer = reinterpret_cast<AsyncWriter*>(pwork);
 	if (!writer->out_stream.Fail()) {
-		writer->out_stream.Write(reinterpret_cast<char*>(writer->out_buffer),
+		writer->out_stream.Write(writer->out_buffer,
 			writer->buffer_size);
 		if (writer->out_stream.Fail()) {
 			writer->error.LoadOsErrorCode();

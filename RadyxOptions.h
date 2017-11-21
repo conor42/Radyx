@@ -33,11 +33,12 @@
 #endif
 #include "CharType.h"
 #include "Path.h"
-#include "ArchiveCompressor.h"
 #include "OptionalSetting.h"
 #include "Lzma2Options.h"
 
 namespace Radyx {
+
+class ArchiveCompressor;
 
 class RadyxOptions
 {

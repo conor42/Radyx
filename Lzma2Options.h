@@ -51,6 +51,7 @@ struct Lzma2Options
 	OptionalSetting<unsigned> second_dict_bits;
 	OptionalSetting<size_t> dictionary_size;
 	OptionalSetting<size_t> match_buffer_size;
+	OptionalSetting<unsigned> buffer_overlap;
 	unsigned block_overlap;
 	unsigned random_filter;
 	Lzma2Options() noexcept
@@ -64,6 +65,7 @@ struct Lzma2Options
 		second_dict_bits(12),
 		dictionary_size(UINT32_C(32) << 20),
 		match_buffer_size(0),
+		buffer_overlap(4),
 		block_overlap(2),
 		random_filter(0) {}
 	void LoadCompressLevel() noexcept;

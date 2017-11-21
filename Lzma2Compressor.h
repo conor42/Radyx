@@ -25,7 +25,6 @@
 #ifndef RADYX_LZMA2_COMPRESSOR_H
 #define RADYX_LZMA2_COMPRESSOR_H
 
-#include <algorithm>
 #include "winlean.h"
 #include "common.h"
 #include "OutputStream.h"
@@ -52,6 +51,7 @@ public:
 		ErrorCode& error_code,
 		Progress* progress = nullptr);
 	size_t Finalize(OutputStream& out_stream);
+	void Reset() noexcept;
 	CoderInfo GetCoderInfo() const noexcept;
 	size_t GetMemoryUsage(unsigned thread_count) const noexcept;
 
@@ -101,7 +101,8 @@ template<class MatchTableT>
 Lzma2Compressor<MatchTableT>::Lzma2Compressor(const Lzma2Options& options_)
 	: match_table(std::min<size_t>(options_.dictionary_size, Lzma2Encoder::GetDictionarySizeMax()),
 		options_.match_buffer_size,
-		static_cast<uint8_t>(options_.fast_length),
+		options_.buffer_overlap,
+		static_cast<uint8_t>(std::min<unsigned>(options_.fast_length, 0xFF)),
 		options_.random_filter),
 	options(options_),
 	dictionary_max(0),
@@ -251,6 +252,13 @@ size_t Lzma2Compressor<MatchTableT>::Finalize(OutputStream& out_stream)
 	out_stream.Put(kChunkEof);
 	needed_random_check = false;
 	return 1;
+}
+
+template<class MatchTableT>
+void Lzma2Compressor<MatchTableT>::Reset() noexcept
+{
+	dictionary_max = 0;
+	needed_random_check = false;
 }
 
 template<class MatchTableT>

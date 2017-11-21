@@ -48,6 +48,7 @@ class MatchTable
 public:
 	MatchTable(size_t dictionary_size_,
 		OptionalSetting<size_t> match_buffer_size_,
+		unsigned buffer_overlap_,
 		uint8_t search_depth,
 		unsigned random_filter_ = 0);
 	~MatchTable();
@@ -56,9 +57,11 @@ public:
 	}
 	size_t GetMemoryUsage(unsigned thread_count) const noexcept;
 	uint8_t* GetOutputByteBuffer(size_t index) noexcept {
-		return reinterpret_cast<uint8_t*>(match_table.GetBuffer(index)); }
+		return reinterpret_cast<uint8_t*>(match_table.GetBuffer(index));
+	}
 	char* GetOutputCharBuffer(size_t index) noexcept {
-		return reinterpret_cast<char*>(match_table.GetBuffer(index)); }
+		return reinterpret_cast<char*>(match_table.GetBuffer(index));
+	}
 	inline bool HaveMatch(size_t index) const noexcept {
 		return match_table.HaveMatch(index);
 	}
@@ -127,6 +130,8 @@ private:
 	OptionalSetting<size_t> match_buffer_size;
 	// One table builder per thread
 	staticvec<MatchTableBuilder> table_builders;
+	// Parameter for overlap calculation when buffer is too small
+	unsigned buffer_overlap;
 	// Cutoff value for random filtration
 	unsigned random_filter;
 	// Derived cutoff value for the filtration algorithm
@@ -154,12 +159,14 @@ const float_t MatchTable<MatchTableT>::kMaxMatchLenFactor = 0.175f;
 template<class MatchTableT>
 MatchTable<MatchTableT>::MatchTable(size_t dictionary_size_,
 	OptionalSetting<size_t> match_buffer_size_,
+	unsigned buffer_overlap_,
 	uint8_t search_depth_,
 	unsigned random_filter_)
 	: match_table(dictionary_size_),
 	head_table(new MatchTableBuilder::ListHead[kHeadTableSize]),
 	dictionary_size(dictionary_size_),
 	match_buffer_size(match_buffer_size_),
+	buffer_overlap(buffer_overlap_),
 	random_filter(random_filter_),
 	random_limit(static_cast<float_t>(random_filter_) * 1.25f - 0.125f),
 	search_depth(std::min<uint8_t>(search_depth_, match_table.kMaxLength) & ~1u),
@@ -257,11 +264,11 @@ void MatchTable<MatchTableT>::BuildTable(const DataBlock& block, ThreadPool& thr
 		if (progress != nullptr) {
 			progress->Erase();
 		}
-		std::Tcerr << "Buffer size: " << (match_buffer_size / 1024) << "kb" << std::endl;
+		std::Tcerr << "Buffer size: " << (match_buffer_size / 1024) << "k units" << std::endl;
 #endif
 	}
 	for (unsigned i = 0; i < thread_count; ++i) {
-		table_builders[i].AllocateMatchBuffer(match_buffer_size);
+		table_builders[i].AllocateMatchBuffer(match_buffer_size, buffer_overlap);
 	}
 	// Create an object for allocating lists to threads
 	MatchTableBuilder::HeadIndexes head_indexes(head_table.get(), table_size, block.end, thread_count);

@@ -30,10 +30,8 @@
 #define RADYX_CONTAINER_7Z_H
 
 #include "ArchiveCompressor.h"
-#include "UnitCompressor.h"
-#include "CompressorInterface.h"
+#include "RadyxLzma2Enc.h"
 #include "CompressedUint64.h"
-#include "ThreadPool.h"
 #include "OutputFile.h"
 #include "CharType.h"
 
@@ -44,9 +42,7 @@ class Container7z
 public:
 	static void ReserveSignatureHeader(OutputFile& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
-		UnitCompressor& unit_comp,
-		CompressorInterface& compressor,
-		ThreadPool& threads,
+		RadyxLzma2Enc& encoder,
 		OutputFile& out_stream);
 
 private:
@@ -82,11 +78,8 @@ private:
 	class Writer
 	{
 	public:
-		Writer(UnitCompressor& unit_comp_, CompressorInterface* compressor_, ThreadPool& threads_, OutputFile& out_stream_)
-			: unit_comp(unit_comp_),
-			compressor(compressor_),
-			threads(threads_),
-			out_stream(out_stream_) {}
+		Writer(OutputStream& out_stream_)
+			: out_stream(out_stream_) {}
 		~Writer() {
 			Flush();
 		}
@@ -102,10 +95,7 @@ private:
 		}
 
 	private:
-		UnitCompressor& unit_comp;
-		CompressorInterface* compressor;
-		ThreadPool& threads;
-		OutputFile& out_stream;
+		OutputStream& out_stream;
 		Crc32 crc32;
 
 		Writer(const Writer&) = delete;
@@ -159,16 +149,11 @@ private:
 		WriterFunc write_func,
 		Writer& writer);
 	static void WriteHeader(const ArchiveCompressor& arch_comp,
-		UnitCompressor& unit_comp,
-		CompressorInterface &compressor,
-		ThreadPool& threads,
-		OutputFile& out_stream);
-	static uint_fast32_t WriteHeaderHeader(UnitCompressor& unit_comp,
-		CompressorInterface& compressor,
-		uint_least64_t header_offset,
+		OutputStream& out_stream);
+	static uint_fast32_t WriteHeaderHeader(uint_least64_t header_offset,
 		uint_least64_t header_pack_size,
 		uint_least64_t header_unpack_size,
-		ThreadPool& threads,
+		CoderInfo& coder_info,
 		OutputFile& out_stream);
 	static void WriteSignatureHeader(uint_least64_t header_offset,
 		uint_least64_t header_size,
@@ -202,19 +187,16 @@ void Container7z::BoolWriter::Flush()
 
 void Container7z::Writer::WriteByte(uint8_t byte)
 {
-	if (unit_comp.GetAvailableSpace() == 0) {
-		Flush();
-	}
-	unit_comp.GetAvailableBuffer()[0] = byte;
-	unit_comp.AddByteCount(1);
+	out_stream.Put(byte);
 	crc32.Add(byte);
 }
 
 void Container7z::Writer::WriteBytes(const uint8_t* buf, size_t count)
 {
 	for (size_t i = 0; i < count; ++i) {
-		WriteByte(buf[i]);
+		crc32.Add(buf[i]);
 	}
+	out_stream.Write(buf, count);
 }
 
 void Container7z::Writer::WriteUint32(uint_fast32_t value)

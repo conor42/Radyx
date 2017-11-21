@@ -30,6 +30,7 @@
 #include "winlean.h"
 #include "common.h"
 #include "RadyxOptions.h"
+#include "ArchiveCompressor.h"
 #include "Lzma2Encoder.h"
 #include "Path.h"
 #include "DirScanner.h"
@@ -519,6 +520,10 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		else {
 			throw InvalidParameter(arg);
 		}
+		break;
+	case 'v':
+		arg += (arg[0] == '=');
+		lzma2.buffer_overlap = ReadSimpleNumericParam(arg, 0, 15);
 		break;
 	default:
 		throw InvalidParameter(arg - 1);

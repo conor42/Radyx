@@ -52,7 +52,9 @@ Lzma2Encoder::Lzma2Encoder() noexcept
 	match_price_count(kDistanceRepriceFrequency),
 	align_price_count(kAlignRepriceFrequency),
 	dist_price_table_size(kDistTableSizeMax),
-	needed_random_check(false)
+	needed_random_check(false),
+	hash_dict_size(0),
+	chain_mask_3(0)
 {
 }
 
@@ -393,6 +395,160 @@ void Lzma2Encoder::EncodeNormalMatch(unsigned len, uint_fast32_t dist, size_t po
 	++match_price_count;
 }
 
+void Lzma2Encoder::HashCreate(unsigned dictionary_bits_3)
+{
+	hash_dict_size = ptrdiff_t(1) << dictionary_bits_3;
+	if (hash_dict_size > kMaxFastSize) {
+		hash_buf.reset(new HashChains);
+	}
+	chain_mask_3 = hash_dict_size - 1;
+	HashReset();
+}
+
+void Lzma2Encoder::HashReset() noexcept
+{
+	// GCC is strict about passing a reference to fill()
+	uint_fast32_t n = kNullLink;
+	table_2.fill(n);
+	table_3.fill(n);
+}
+
+size_t Lzma2Encoder::HashGetMatches(const DataBlock& block,
+	ptrdiff_t index,
+	size_t max_length,
+	MatchResult match)
+{
+	matches.Clear();
+	hash_prev_index = std::max(hash_prev_index, index - hash_dict_size);
+	const uint8_t* data = block.data;
+	if (hash_dict_size <= kMaxFastSize) {
+		while (++hash_prev_index < index) {
+			size_t hash = GetHash2(data + hash_prev_index);
+			table_2[hash & kHashMask2] = static_cast<uint_fast32_t>(hash_prev_index);
+			hash = GetHash3(data + hash_prev_index, hash) & kHashMask3;
+			table_3[hash] = static_cast<uint_fast32_t>(hash_prev_index);
+		}
+		data += index;
+		size_t hash_2 = GetHash2(data);
+		size_t hash_3 = GetHash3(data, hash_2) & kHashMask3;
+		hash_2 &= kHashMask2;
+		ptrdiff_t index_2 = table_2[hash_2];
+		table_2[hash_2] = static_cast<uint_fast32_t>(index);
+		size_t max_len = 0;
+		if (index_2 != kNullLink) {
+			ptrdiff_t dist = index - index_2 - 1;
+			if (dist < match.dist) {
+				if (dist < hash_dict_size) {
+					const uint8_t* data_2 = block.data + index_2;
+					if (data[0] == data_2[0]) {
+						max_len = 2;
+						for (; data[max_len] == data_2[max_len] && max_len < max_length; ++max_len) {
+						}
+						matches.push_back(MatchResult(static_cast<unsigned>(max_len),
+							static_cast<UintFast32>(dist)));
+					}
+				}
+				ptrdiff_t index_3 = table_3[hash_3];
+				if (index_3 != kNullLink && index_3 < index_2 && index - index_3 <= hash_dict_size && max_len < max_length) {
+					const uint8_t* data_2 = block.data + index_3;
+//					if (data[0] == data_2[0]) {
+					size_t len_test = 0;// 3;
+						for (; data[len_test] == data_2[len_test] && len_test < max_length; ++len_test) {
+						}
+						if (len_test > max_len) {
+							matches.push_back(MatchResult(static_cast<unsigned>(len_test),
+								static_cast<UintFast32>(index - index_3 - 1)));
+							max_len = len_test;
+						}
+//					}
+				}
+			}
+		}
+		table_3[hash_3] = static_cast<uint_fast32_t>(index);
+		if (static_cast<unsigned>(max_len) < match.length) {
+			matches.push_back(match);
+			return match.length;
+		}
+		return max_len;
+	}
+	else {
+		uint_fast32_t* hash_chain_2 = hash_buf->hash_chain_2.data();
+		uint_fast32_t* hash_chain_3 = hash_buf->hash_chain_3.data();
+		// Update hash tables and chains for any positions that were skipped
+		while (++hash_prev_index < index) {
+			size_t hash = GetHash2(data + hash_prev_index);
+			hash_chain_2[hash_prev_index & kChainMask2] = table_2[hash & kHashMask2];
+			table_2[hash & kHashMask2] = static_cast<uint_fast32_t>(hash_prev_index);
+			hash = GetHash3(data + hash_prev_index, hash) & kHashMask3;
+			hash_chain_3[hash_prev_index & chain_mask_3] = table_3[hash];
+			table_3[hash] = static_cast<uint_fast32_t>(hash_prev_index);
+		}
+		data += index;
+		ptrdiff_t end_index = index - match.dist;
+		// The lowest position to be searched
+		ptrdiff_t end = std::max(end_index, index - kChainMask2 - 1);
+		size_t hash = GetHash2(data);
+		uint_fast32_t first_match = table_2[hash & kHashMask2];
+		table_2[hash & kHashMask2] = static_cast<uint_fast32_t>(index);
+		ptrdiff_t match_2 = first_match;
+		unsigned cycles = match_cycles;
+		size_t max_len = 0;
+		for (; match_2 != kNullLink && match_2 >= end && cycles > 0; match_2 = hash_chain_2[match_2 & kChainMask2]) {
+			--cycles;
+			const uint8_t* data_2 = block.data + match_2;
+			if (data[0] != data_2[0]) {
+				continue;
+			}
+			max_len = 2;
+			for (; data[max_len] == data_2[max_len] && max_len < max_length; ++max_len) {
+			}
+			matches.push_back(MatchResult(static_cast<unsigned>(max_len),
+				static_cast<UintFast32>(index - match_2 - 1)));
+			// Prevent this position being tested again
+			--match_2;
+			break;
+		}
+		hash_chain_2[index & kChainMask2] = first_match;
+		hash = GetHash3(data, hash) & kHashMask3;
+		first_match = table_3[hash];
+		table_3[hash] = static_cast<uint_fast32_t>(index);
+		if (cycles
+			&& first_match != kNullLink
+			&& match_2 >= index - hash_dict_size
+			&& max_len < std::min(match.length - 1, static_cast<unsigned>(max_length)))
+		{
+			end = std::max(end_index, index - hash_dict_size);
+			ptrdiff_t match_3 = first_match;
+			if (match_3 >= end) {
+				do {
+					if (match_3 <= match_2) {
+						--cycles;
+						const uint8_t* data_2 = block.data + match_3;
+						size_t len_test = 0;
+						for (; data[len_test] == data_2[len_test] && len_test < max_length; ++len_test) {
+						}
+						if (len_test > max_len) {
+							matches.push_back(MatchResult(static_cast<unsigned>(len_test),
+								static_cast<UintFast32>(index - match_3 - 1)));
+							max_len = len_test;
+							if (len_test >= max_length) {
+								break;
+							}
+						}
+					}
+					match_3 = hash_chain_3[match_3 & chain_mask_3];
+				} while (match_3 != kNullLink && match_3 >= end && cycles > 0);
+			}
+		}
+		hash_chain_3[index & chain_mask_3] = first_match;
+		if (static_cast<unsigned>(max_len) < match.length) {
+			matches.push_back(match);
+			return match.length;
+		}
+		return max_len;
+	}
+}
+
 uint8_t Lzma2Encoder::GetLcLpPbCode() noexcept
 {
 	return static_cast<uint8_t>((pb * 5 + lp) * 9 + lc);
@@ -492,7 +648,7 @@ size_t Lzma2Encoder::InitOptimizerPos0(const DataBlock& block,
 	unsigned normal_match_price = match_price + rc.GetPrice0(is_rep_prob);
 	size_t len = std::max<size_t>(rep_lens[0] + 1, 2);
 	// Test the match prices
-	if (hash_chain.get() == nullptr) {
+	if (hash_dict_size == 0) {
 		// Normal mode
 		InitMatchesPos0(block, match, pos_state, len, normal_match_price, opt_buf);
 		return std::max<size_t>(match.length, rep_lens[rep_max_index]);
@@ -544,7 +700,14 @@ size_t Lzma2Encoder::InitMatchesPos0Best(const DataBlock& block,
 	OptimalArray& opt_buf) noexcept
 {
 	if (len <= match.length) {
-		size_t main_len = hash_chain->GetMatches(block, index, match_cycles, match, matches);
+		size_t main_len;
+		if (match.length < 3) {
+			matches.Set(match);
+			main_len = match.length;
+		}
+		else {
+			main_len = HashGetMatches(block, index, std::min<size_t>(block.end - index, fast_length), match);
+		}
 		size_t match_index = 0;
 		while (len > matches[match_index].length) {
 			++match_index;
@@ -790,7 +953,7 @@ size_t Lzma2Encoder::OptimalParse(const DataBlock& block,
 	if (match.length >= start_len && max_length >= start_len) {
 		// Try normal match
 		uint_fast32_t normal_match_price = match_price + rc.GetPrice0(is_rep_prob);
-		if (hash_chain.get() == nullptr) {
+		if (hash_dict_size == 0) {
 			// Normal mode - single match
 			size_t length = std::min<size_t>(match.length, max_length);
 			len_end = std::max(len_end, cur + length);
@@ -849,7 +1012,14 @@ size_t Lzma2Encoder::OptimalParse(const DataBlock& block,
 		}
 		else {
 			// Hybrid mode
-			size_t main_len = hash_chain->GetMatches(block, index, match_cycles, match, matches);
+			size_t main_len;
+			if (match.length < 3) {
+				matches.Set(match);
+				main_len = match.length;
+			}
+			else {
+				main_len = HashGetMatches(block, index, max_length, match);
+			}
 			main_len = std::min(main_len, max_length);
 			len_end = std::max(len_end, cur + main_len);
 			size_t match_index = 0;

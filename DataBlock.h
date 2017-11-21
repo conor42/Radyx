@@ -51,6 +51,9 @@ struct DataBlock
 		: data(data_), start(start_), end(end_) {}
 	DataBlock(const MutableDataBlock& mb) 
 		: data(mb.data), start(mb.start), end(mb.end) {}
+	size_t Length() const noexcept {
+		return end - start;
+	}
 };
 
 }

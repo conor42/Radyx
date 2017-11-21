@@ -38,8 +38,9 @@ public:
 	static const unsigned kWeightUnitBits = 3;
 	static const unsigned kWeightUnitTotal = 1 << kWeightUnitBits;
 
-	Progress(uint_least64_t total_bytes_, unsigned encode_weight_);
+	Progress();
 	~Progress();
+	void Init(uint_least64_t total_bytes_, unsigned encode_weight_);
 	inline void Show();
 	inline void Rewind();
 	void RewindLocked();

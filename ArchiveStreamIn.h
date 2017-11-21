@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Class: OutputStream
-//        Interface for file writing
+// Class:   ArchiveStreamIn
+//          Interface for reading data into a buffer
 //
 // Copyright 2017 Conor McCarthy
 //
@@ -22,21 +22,20 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef RADYX_OUTPUT_STREAM_H
-#define RADYX_OUTPUT_STREAM_H
+#ifndef RADYX_ARCHIVE_STREAM_IN_H
+#define RADYX_ARCHIVE_STREAM_IN_H
 
 #include "common.h"
 
-class OutputStream
+namespace Radyx {
+
+class ArchiveStreamIn
 {
 public:
-
-	virtual OutputStream& Put(char c) = 0;
-	virtual OutputStream& Write(const void* s, size_t n) = 0;
-	virtual void Flush() = 0;
-	virtual void DisableExceptions() = 0;
-	virtual void RestoreExceptions() = 0;
-	virtual bool Fail() const noexcept = 0;
+	virtual size_t Read(uint8_t* buffer, size_t length) = 0;
+	virtual bool Complete() const noexcept = 0;
 };
+
+} // Radyx
 
 #endif
