@@ -79,7 +79,7 @@ public:
 		return 0;
 	}
 	static unsigned Get2ndDictionaryBitsMax() noexcept {
-		return 16;
+		return kMaxHashDictBits;
 	}
 	// User input constraints. The actual max size is 2 bytes less than 2^32 but we allow the user to set 2^32.
 	static size_t GetUserDictionarySizeMin() noexcept {
@@ -158,15 +158,15 @@ private:
 	static const uint8_t kChunkAllReset = 3 << kChunkResetShift;
 	static const unsigned kRandomFilterMarginBits = 7;
 
-	static const unsigned kMaxHashDictBits = 16;
+	static const unsigned kMaxHashDictBits = 14;
 	static const unsigned kHash2Bits = 10;
 	static const unsigned kHash3Bits = 13;
 	static const size_t kHashMask2 = (1 << kHash2Bits) - 1;
 	static const size_t kHashMask3 = (1 << kHash3Bits) - 1;
 	static const ptrdiff_t kChainMask2 = kHashMask2;
 	static const uint_fast32_t kNullLink = UINT32_MAX;
-	static const unsigned kMaxFastBits = 10;
-	static const ptrdiff_t kMaxFastSize = 1 << kMaxFastBits;
+//	static const unsigned kMaxFastBits = 10;
+//	static const ptrdiff_t kMaxFastSize = 1 << kMaxFastBits;
 
 	struct RepDistances
 	{

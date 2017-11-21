@@ -398,9 +398,9 @@ void Lzma2Encoder::EncodeNormalMatch(unsigned len, uint_fast32_t dist, size_t po
 void Lzma2Encoder::HashCreate(unsigned dictionary_bits_3)
 {
 	hash_dict_size = ptrdiff_t(1) << dictionary_bits_3;
-	if (hash_dict_size > kMaxFastSize) {
+//	if (hash_dict_size > kMaxFastSize) {
 		hash_buf.reset(new HashChains);
-	}
+//	}
 	chain_mask_3 = hash_dict_size - 1;
 	HashReset();
 }
@@ -421,6 +421,7 @@ size_t Lzma2Encoder::HashGetMatches(const DataBlock& block,
 	matches.Clear();
 	hash_prev_index = std::max(hash_prev_index, index - hash_dict_size);
 	const uint8_t* data = block.data;
+#if 0
 	if (hash_dict_size <= kMaxFastSize) {
 		while (++hash_prev_index < index) {
 			size_t hash = GetHash2(data + hash_prev_index);
@@ -472,6 +473,7 @@ size_t Lzma2Encoder::HashGetMatches(const DataBlock& block,
 		return max_len;
 	}
 	else {
+#endif
 		uint_fast32_t* hash_chain_2 = hash_buf->hash_chain_2.data();
 		uint_fast32_t* hash_chain_3 = hash_buf->hash_chain_3.data();
 		// Update hash tables and chains for any positions that were skipped
@@ -546,7 +548,7 @@ size_t Lzma2Encoder::HashGetMatches(const DataBlock& block,
 			return match.length;
 		}
 		return max_len;
-	}
+//	}
 }
 
 uint8_t Lzma2Encoder::GetLcLpPbCode() noexcept
