@@ -29,7 +29,7 @@
 #include <thread>
 #include <cassert>
 
-#ifdef _MSC_VER
+#if (_MSC_VER < 1900)
 #define noexcept
 #endif
 
