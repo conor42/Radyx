@@ -6,7 +6,7 @@
 // Authors: Conor McCarthy
 //          Igor Pavlov
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 // Based on 7-zip 9.20 copyright 2010 Igor Pavlov
 //
 // This file is part of Radyx.
@@ -27,10 +27,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <array>
-#ifdef HAVE_CODECVT
+#if (defined __GNUC__ && __GNUC__ >= 5) || (defined __clang_major__ && (__clang_major__ * 100 + __clang_minor__) >= 303)
+#define HAVE_CODECVT
 #include <codecvt>
 #elif !defined(_UNICODE)
-#include "utf8.h"
+#include "../utf8cpp/source/utf8.h" // https://github.com/nemtrif/utfcpp
 #endif
 #include "common.h"
 #include "Container7z.h"
@@ -45,6 +46,8 @@ const char Container7z::kSignature[6] = { '7', 'z', '\xBC', '\xAF', '\x27', '\x1
 
 void Container7z::Writer::WriteName(const FsString& name, size_t root)
 {
+	if (root >= name.length())
+		return;
 #ifdef _UNICODE
 	for (size_t i = root; i < name.length(); ++i) {
 		WriteByte(static_cast<uint8_t>(name[i]));
@@ -53,8 +56,7 @@ void Container7z::Writer::WriteName(const FsString& name, size_t root)
 #elif defined HAVE_CODECVT
 	std::codecvt_utf8_utf16<char16_t> converter;
 	char16_t buf_char_16[kNameConverterBufferSize];
-	mbstate_t mbs;
-	memset(&mbs, 0, sizeof(mbs));
+	mbstate_t mbs = std::mbstate_t();
 	const char* next1;
 	char16_t* next2;
 	std::codecvt_base::result res = converter.in(mbs,
@@ -86,8 +88,8 @@ void Container7z::Writer::WriteName(const FsString& name, size_t root)
 
 void Container7z::Writer::Flush()
 {
-	if (compressor != nullptr) {
-		unit_comp.Compress(*compressor, threads, out_stream, nullptr);
+	if (compress) {
+		unit_comp.Compress(out_stream, nullptr);
 		unit_comp.Shift();
 	}
 	else {
@@ -236,32 +238,30 @@ void Container7z::WriteSubStreamsInfo(const ArchiveCompressor& arch_comp, Writer
 
 uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
-	CompressorInterface &compressor,
-	ThreadPool& threads,
 	OutputStream& out_stream)
 {
 	out_stream.exceptions(std::ios_base::failbit | std::ios_base::badbit);
-	unit_comp.Reset(false, false);
+	unit_comp.Begin(false, false);
 	uint_least64_t packed_size = 0;
 	try {
 		uint_least64_t header_offset = out_stream.tellp();
 		header_offset -= 32;
-		WriteHeader(arch_comp, unit_comp, compressor, threads, out_stream);
-		unit_comp.Compress(compressor, threads, out_stream, nullptr);
+		WriteHeader(arch_comp, unit_comp, out_stream);
+		unit_comp.Compress(out_stream, nullptr);
 		unit_comp.WaitCompletion();
 		packed_size = unit_comp.GetPackSize();
-		packed_size += compressor.Finalize(out_stream);
+		packed_size += unit_comp.Finalize(out_stream);
 		uint_least64_t header_unpack_size = unit_comp.GetUnpackSize();
-		unit_comp.Reset(false);
+        CoderInfo coder_info = unit_comp.GetCoderInfo();
+		unit_comp.Begin(false);
 		uint_least64_t header_header_offset = out_stream.tellp();
 		header_header_offset -= 32;
 		uint_least64_t header_pack_size = header_header_offset - header_offset;
 		uint_fast32_t crc32 = WriteHeaderHeader(unit_comp,
-			compressor,
 			header_offset,
 			header_pack_size,
 			header_unpack_size,
-			threads,
+            coder_info,
 			out_stream);
 		WriteSignatureHeader(header_header_offset, unit_comp.GetUnpackSize(), crc32, out_stream);
 		packed_size += unit_comp.GetPackSize() + kSignatureHeaderSize;
@@ -276,11 +276,9 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 
 void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
-	CompressorInterface &compressor,
-	ThreadPool& threads,
 	OutputStream& out_stream)
 {
-	Writer writer(unit_comp, &compressor, threads, out_stream);
+	Writer writer(unit_comp, out_stream, true);
 	writer.WriteByte(kHeader);
 	// Archive properties
 	if (arch_comp.GetUnitList().size() != 0) {
@@ -350,14 +348,13 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 
 // Write an uncompressed header for the compressed header
 uint_fast32_t Container7z::WriteHeaderHeader(UnitCompressor& unit_comp,
-	CompressorInterface& compressor,
 	uint_least64_t header_offset,
 	uint_least64_t header_pack_size,
 	uint_least64_t header_unpack_size,
-	ThreadPool& threads,
-	OutputStream& out_stream)
+    CoderInfo& coder_info,
+    OutputStream& out_stream)
 {
-	Writer writer(unit_comp, nullptr, threads, out_stream);
+	Writer writer(unit_comp, out_stream, false);
 	writer.WriteCompressedUint64(kEncodedHeader);
 	writer.WriteByte(kPackInfo);
 	writer.WriteCompressedUint64(header_offset);
@@ -372,7 +369,7 @@ uint_fast32_t Container7z::WriteHeaderHeader(UnitCompressor& unit_comp,
 	writer.WriteByte(0);
 	// Number of coders
 	writer.WriteCompressedUint64(1);
-	WriteUnitInfo(compressor.GetCoderInfo(), writer);
+	WriteUnitInfo(coder_info, writer);
 	writer.WriteByte(kCodersUnpackSize);
 	writer.WriteCompressedUint64(header_unpack_size);
 	writer.WriteByte(kEnd);

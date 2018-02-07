@@ -2,7 +2,7 @@
 //
 // Radyx main function 
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -33,26 +33,31 @@
 #include "../common.h"
 #include "../OutputFile.h"
 #include "../CharType.h"
-#include "../Lzma2Compressor.h"
 #include "../ArchiveCompressor.h"
 #include "../Container7z.h"
 #include "../RadyxOptions.h"
 #include "../IoException.h"
 #include "../Strings.h"
 
+#if defined _WIN32 && !defined _WIN64
+#define RADYX_CDECL __cdecl
+#else
+#define RADYX_CDECL
+#endif
+
 using namespace Radyx;
 
 static const char kProgName[] = "Radyx";
-static const char kVersion[] = "0.9.1 beta";
-static const char kCopyright[] = "  Copyright 2015 Conor McCarthy";
-static const char kReleaseDate[] = "  2015-02-18";
+static const char kVersion[] = "0.9.2 beta";
+static const char kCopyright[] = "  Copyright 2018 Conor McCarthy";
+static const char kReleaseDate[] = "  2018-02-07";
 static const char kLicense[] = "This software has NO WARRANTY and is released under the\nGNU General Public License: www.gnu.org/licenses/gpl.html\n";
 
 static const uint_least64_t kMinMemory = 512 * 1024 * 1024;
 
 volatile bool g_break = false;
 
-void SignalHandler(int param)
+void RADYX_CDECL SignalHandler(int)
 {
 	g_break = true;
 }
@@ -60,7 +65,7 @@ void SignalHandler(int param)
 void PrintBanner()
 {
 	std::Tcerr << kProgName
-		<< ((sizeof(void*) > 4) ? " [64] " : " [32] ")
+		<< ((sizeof(void*) > 4) ? " (x64) " : " (x86) ")
 		<< kVersion
 		<< kCopyright
 		<< kReleaseDate
@@ -83,6 +88,7 @@ bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, Out
 		std::Tcerr << Strings::kErrorCol_ << Strings::kArchiveFileExists << std::endl;
 		throw std::invalid_argument("");
 	}
+	std::Tcerr << Strings::kCreatingArchive_ << archive_path.c_str() << std::endl;
 #ifdef _WIN32
 	bool no_caching = false;
 	if (avail_mem != 0) {
@@ -99,7 +105,7 @@ bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, Out
 	return !is_dev_null;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 {
 	signal(SIGINT, SignalHandler);
 	PrintBanner();
@@ -107,7 +113,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	Path archive_path;
 	try {
 		RadyxOptions options(argc, argv, archive_path);
-		ThreadPool threads(options.thread_count - 1);
 		uint_least64_t avail_mem = 0;
 #ifdef _WIN32
 		MEMORYSTATUSEX msx;
@@ -116,20 +121,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			avail_mem = msx.ullAvailPhys;
 		}
 #endif
-		std::unique_ptr<CompressorInterface> compressor;
-		size_t dictionary_size = options.lzma2.dictionary_size;
-		if (dictionary_size > PackedMatchTable::kMaxDictionary
-			|| (options.lzma2.fast_length > PackedMatchTable::kMaxLength)) {
-			compressor.reset(new Lzma2Compressor<StructuredMatchTable>(options.lzma2));
-		}
-		else {
-			compressor.reset(new Lzma2Compressor<PackedMatchTable>(options.lzma2));
-		}
-		UnitCompressor unit_comp(compressor->GetDictionarySize(),
-			compressor->GetMaxBufferOverrun(),
-			(dictionary_size * options.lzma2.block_overlap) >> Lzma2Options::kOverlapShift,
-			false,
-			options.async_read);
+		UnitCompressor unit_comp(options, false);
 		ArchiveCompressor ar_comp;
 		std::Tcerr << Strings::kSearching;
 		options.GetFiles(ar_comp);
@@ -143,7 +135,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			std::Tcerr << Strings::kNoFilesFound << std::endl;
 			return EXIT_SUCCESS;
 		}
-		avail_mem -= compressor->GetMemoryUsage(options.thread_count) + unit_comp.GetMemoryUsage();
+		avail_mem -= unit_comp.GetMemoryUsage();
 		OutputFile out_stream;
 		created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
 		Container7z::ReserveSignatureHeader(out_stream);
@@ -153,12 +145,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		if(nice(1) < 0) {
 		}
 #endif
-		uint_least64_t packed = ar_comp.Compress(unit_comp, *compressor, options, threads, out_stream);
+		uint_least64_t packed = ar_comp.Compress(unit_comp, options, out_stream);
 		if (ar_comp.GetFileList().size() != 0 && !g_break) {
-			packed += Container7z::WriteDatabase(ar_comp, unit_comp, *compressor, threads, out_stream);
+			packed += Container7z::WriteDatabase(ar_comp, unit_comp, out_stream);
 			if (!created_file) {
 				std::Tcerr << "Compressed size: " << packed << " bytes" << std::endl;
 			}
+			std::Tcerr << Strings::kDone << std::endl;
 			return EXIT_SUCCESS;
 		}
 	}

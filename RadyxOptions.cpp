@@ -3,7 +3,7 @@
 // Class: RadyxOptions
 //        Compression and archiving options, and the list of file specs to add
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -24,17 +24,21 @@
 
 #ifndef _WIN32
 #include <unistd.h>
+#define _chdir chdir
+#else
+#include <direct.h>
 #endif
 #include <thread>
 #include <fstream>
 #include "winlean.h"
 #include "common.h"
 #include "RadyxOptions.h"
-#include "Lzma2Encoder.h"
+#include "ArchiveCompressor.h"
 #include "Path.h"
 #include "DirScanner.h"
 #include "IoException.h"
 #include "Strings.h"
+#include "fast-lzma2/fast-lzma2.h"
 
 namespace Radyx {
 
@@ -52,7 +56,7 @@ RadyxOptions::FileSpec::FileSpec(const _TCHAR* path_, Recurse recurse_)
 	recurse = recurse_ == kRecurseAll || (recurse_ == kRecurseWildcard && Path::IsWildcard(path.c_str() + name));
 }
 
-void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path, unsigned length)
+void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path)
 {
 	if(path.compare(full_path) != 0) {
 		size_t length = path.length();
@@ -71,6 +75,7 @@ void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path, unsigned lengt
 RadyxOptions::RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path)
 	: default_recurse(kRecurseNone),
 	share_deny_none(false),
+	store_full_paths(false),
 //	yes_to_all(false),
 	multi_thread(true),
 	thread_count(0),
@@ -80,7 +85,7 @@ RadyxOptions::RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path)
 	bcj_filter(true),
 	async_read(true),
 	store_creation_time(false),
-	quiet_mode(false)
+	quiet_mode(true)
 {
 	ParseCommand(argc, argv);
 	int i = 2;
@@ -112,11 +117,6 @@ RadyxOptions::RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path)
 				throw std::invalid_argument("");
 			}
 		}
-	}
-	if (lzma2.match_buffer_size.IsSet()
-		&& lzma2.match_buffer_size > MatchTableBuilder::GetMaxBufferSize(lzma2.dictionary_size))
-	{
-		std::Tcerr << Strings::kMatchBufferTooLarge << std::endl;
 	}
 	for (i = 2; i < argc; ++i) {
 		if (argv[i][0] == '@') {
@@ -161,13 +161,12 @@ RadyxOptions::RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path)
 		thread_count = (hardware_threads != 0) ? hardware_threads : 2;
 	}
 	LoadFullPaths();
-	lzma2.LoadCompressLevel();
 }
 
 void RadyxOptions::ParseCommand(int argc, _TCHAR* argv[])
 {
 	if (argc < 2) {
-		std::Tcerr << Strings::kNoCommandSpecified << std::endl;
+		std::Tcerr << Strings::kHelpString << std::endl;
 		throw std::invalid_argument("");
 	}
 	if (argv[1][1] == '\0') {
@@ -190,7 +189,20 @@ void RadyxOptions::ParseCommand(int argc, _TCHAR* argv[])
 
 void RadyxOptions::ReadFileList(const _TCHAR* path, Recurse recurse, std::list<FileSpec>& spec_list)
 {
+#ifdef _UNICODE
+	char cpath[kMaxPath + 1];
+	WideCharToMultiByte(CP_UTF8,
+		0,
+		path,
+		-1,
+		cpath,
+		kMaxPath,
+		nullptr,
+		nullptr);
+	std::ifstream in(cpath);
+#else
 	std::ifstream in(path);
+#endif
 	if (in.fail()) {
 		throw IoException(Strings::kCannotOpenList, path);
 	}
@@ -274,12 +286,9 @@ void RadyxOptions::ParseArg(const _TCHAR* arg)
 	case 'a':
 		switch (arg[1]) {
 		case 'r': {
-			arg += (arg[2] == '=') + 2;
-			int on_off = CheckOnOff(arg);
-			if (on_off >= 0) {
-				async_read = (on_off > 0);
-			}
-			else {
+			async_read = !(arg[2] == '-');
+			arg += (arg[2] == '-') + 2;
+			if (*arg != 0) {
 				throw InvalidParameter(arg);
 			}
 			break;
@@ -296,7 +305,9 @@ void RadyxOptions::ParseArg(const _TCHAR* arg)
 		HandleCompressionMethod(arg);
 		break;
 	case 'q':
-		quiet_mode = true;
+		if(arg[1] != '\0' && arg[1] != '-')
+			throw InvalidParameter(arg);
+		quiet_mode = arg[1] != '-';
 		break;
 	case 'r':
 		// Already done
@@ -306,6 +317,11 @@ void RadyxOptions::ParseArg(const _TCHAR* arg)
 		case 's':
 			Handle_ss(arg);
 			break;
+		case 'p':
+			if (arg[2] == 'f' && arg[3] == '\0') {
+				store_full_paths = true;
+				break;
+			}
 		default:
 			throw InvalidParameter(arg);
 		}
@@ -323,20 +339,6 @@ void RadyxOptions::ParseArg(const _TCHAR* arg)
 /*	case 'y':
 		yes_to_all = true;
 		break;*/
-	case 'z': {
-		arg += (arg[1] == '=') + 1;
-		int on_off = CheckOnOff(arg);
-		if (on_off == 0) {
-			lzma2.random_filter = 0;
-		}
-		else if (on_off == 1) {
-			lzma2.random_filter = kRandomFilterDefault;
-		}
-		else {
-			lzma2.random_filter = ReadSimpleNumericParam(arg, 0, 1000);
-		}
-		break;
-	}
 	default:
 		throw InvalidParameter(arg);
 	}
@@ -371,10 +373,16 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 	switch (*arg++) {
 	case 'x':
 		arg += (arg[0] == '=');
-		lzma2.compress_level = ReadSimpleNumericParam(arg, 1, 9);
+		lzma2.compress_level = ReadSimpleNumericParam(arg, 1, 12);
 		break;
 	case 's':
-		HandleSolidMode(arg);
+        if (arg[0] == 'd') {
+            arg += (arg[1] == '=') + 1;
+            lzma2.search_depth = ReadSimpleNumericParam(arg, FL2_SEARCH_DEPTH_MIN, FL2_SEARCH_DEPTH_MAX);
+        }
+        else {
+            HandleSolidMode(arg);
+        }
 		break;
 	case 'm':
 		switch (arg[0]) {
@@ -389,7 +397,7 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 				multi_thread = true;
 			}
 			else {
-				thread_count = ReadSimpleNumericParam(arg, 1, UINT16_MAX);
+				thread_count = ReadSimpleNumericParam(arg, 1, FL2_MAXTHREADS);
 				multi_thread = true;
 			}
 			break;
@@ -397,7 +405,7 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		case 'c':
 		{
 			arg += (arg[1] == '=') + 1;
-			lzma2.match_cycles = ReadSimpleNumericParam(arg, 1, 1000);
+			lzma2.match_cycles = ReadSimpleNumericParam(arg, 1, 1U << FL2_SEARCHLOG_MAX);
 			break;
 		}
 		default:
@@ -406,7 +414,7 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		break;
 	case 'a':
 		arg += (arg[0] == '=');
-		lzma2.encoder_mode = static_cast<Lzma2Options::Mode>(ReadSimpleNumericParam(arg, 0, 2));
+		lzma2.encoder_mode = static_cast<Lzma2Options::Mode>(ReadSimpleNumericParam(arg, 0, 3));
 		break;
 	case 'd':
 	{
@@ -423,21 +431,14 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		}
 		uint_least64_t value = ApplyMultiplier(end, u);
 		if (secondary) {
-			unsigned bits = 0; 
-			while (value > 1) {
-				value >>= 1;
-				++bits;
-			}
-			if (bits < Lzma2Encoder::Get2ndDictionaryBitsMin()
-				|| bits > Lzma2Encoder::Get2ndDictionaryBitsMax())
+			if (value < (1U << FL2_CHAINLOG_MIN) || value > (1U << FL2_CHAINLOG_MAX))
 			{
 				throw InvalidParameter(arg);
 			}
-			lzma2.second_dict_bits = bits;
+			lzma2.second_dict_size = static_cast<unsigned>(value);
 		}
 		else {
-			if (value < Lzma2Encoder::GetUserDictionarySizeMin()
-				|| value > Lzma2Encoder::GetUserDictionarySizeMax())
+			if (value < (1U << FL2_DICTLOG_MIN) || value > (1U << FL2_DICTLOG_MAX))
 			{
 				throw InvalidParameter(arg);
 			}
@@ -448,19 +449,13 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 	case 'b':
 	{
 		arg += (arg[0] == '=');
-		_TCHAR* end;
-		unsigned long u = ReadDecimal(arg, end);
-		uint_least64_t value = u;
-		if (end > arg) {
-			value = ApplyMultiplier(end, u);
-			lzma2.match_buffer_size = static_cast<size_t>(value);
-		}
+		lzma2.match_buffer_log = ReadSimpleNumericParam(arg, FL2_BUFFER_SIZE_LOG_MIN, FL2_BUFFER_SIZE_LOG_MAX);
 		break;
 	}
 	case 'f':
 		if (arg[0] == 'b') {
 			arg += (arg[1] == '=') + 1;
-			lzma2.fast_length = ReadSimpleNumericParam(arg, 6, 254);
+			lzma2.fast_length = ReadSimpleNumericParam(arg, FL2_FASTLENGTH_MIN, FL2_FASTLENGTH_MAX);
 		}
 		else {
 			arg += (arg[0] == '=');
@@ -484,11 +479,11 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		switch (arg[0]) {
 		case 'c':
 			arg += (arg[1] == '=') + 1;
-			lzma2.lc = ReadSimpleNumericParam(arg, 0, Lzma2Encoder::GetLiteralContextBitsMax());
+			lzma2.lc = ReadSimpleNumericParam(arg, 0, FL2_LC_MAX);
 			break;
 		case 'p':
 			arg += (arg[1] == '=') + 1;
-			lzma2.lp = ReadSimpleNumericParam(arg, 0, Lzma2Encoder::GetLiteralPositionBitsMax());
+			lzma2.lp = ReadSimpleNumericParam(arg, 0, FL2_LP_MAX);
 			break;
 		default:
 			throw InvalidParameter(arg);
@@ -496,12 +491,12 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		break;
 	case 'o':
 		arg += (arg[0] == '=');
-		lzma2.block_overlap = ReadSimpleNumericParam(arg, 1, 14);
+		lzma2.block_overlap = ReadSimpleNumericParam(arg, 1, FL2_BLOCK_OVERLAP_MAX);
 		break;
 	case 'p':
 		if (arg[0] == 'b') {
 			arg += (arg[1] == '=') + 1;
-			lzma2.pb = ReadSimpleNumericParam(arg, 0, Lzma2Encoder::GetPositionBitsMax());
+			lzma2.pb = ReadSimpleNumericParam(arg, 0, FL2_PB_MAX);
 		}
 		else {
 			throw InvalidParameter(arg);
@@ -520,6 +515,17 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 			throw InvalidParameter(arg);
 		}
 		break;
+    case 'q': {
+        arg += (arg[0] == '=');
+        int on_off = CheckOnOff(arg);
+        if (on_off >= 0) {
+            lzma2.divide_and_conquer = (on_off > 0);
+        }
+        else {
+            throw InvalidParameter(arg);
+        }
+        break;
+    }
 	default:
 		throw InvalidParameter(arg - 1);
 	}
@@ -650,7 +656,7 @@ void RadyxOptions::LoadFullPaths()
 #ifdef _WIN32
 		DWORD len = GetFullPathName(fs.path.c_str(), kMaxPath, full_path.get(), NULL);
 		if (len != 0 && len < kMaxPath) {
-			fs.SetFullPath(full_path.get(), len);
+			fs.SetFullPath(full_path.get());
 		}
 #else
 		temp = fs.path;

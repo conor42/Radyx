@@ -2,7 +2,7 @@
 //
 // Definitions for character portability         
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -30,6 +30,7 @@
 
 #include <tchar.h>
 
+
 namespace Radyx {
 	typedef std::wstring FsString;
 }
@@ -44,12 +45,14 @@ namespace Radyx {
 }
 #define Tcerr cerr
 #define _tmain main
-#define _tchdir chdir
+#define _tchdir _chdir
 #define _tcslen strlen
 #define _tcschr strchr
 #define _tcsrchr strrchr
 #define _tcsicmp strcasecmp
 #define _tcstoul strtoul
+#define _tcscpy_s strcpy_s
+#define _stprintf_s sprintf_s
 #define _tremove remove
 #define _T(x) x
 

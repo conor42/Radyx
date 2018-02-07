@@ -2,28 +2,27 @@
     Introduction
 ===============================================================================
 
-Radyx is a file archiver which creates archives in the 7-zip format. It uses
-only the LZMA2 compression algorithm. The major difference between Radyx and
-7-zip is in the match finder algorithm. Radyx uses the binning step of a radix
-sort to find string matches. This algorithm is "embarrassingly parallel"
-meaning that very little communication between threads is required. As a
-result, only one match finder is required for any number of CPU cores, whereas
-7-zip must use a separate match finder for every 2 threads in normal mode and
-each thread in fast mode. The memory requirement for Radyx increases relatively
-little as extra threads are added. Compression speed depends on the type of
-data. It generally seems to be up to 15% faster than 7-zip, but on some unusual
-data types (eg. some DNA sequence files) it gains a 2X to 3X speed increase.
+Radyx is a file archiver which creates archives in the 7-zip format using only
+the LZMA2 compression algorithm provided by the Fast LZMA2 Library.
 
-Because radix sorting works on blocks of data, Radyx cannot use a sliding
-window for the LZMA2 dictionary. Instead, some overlap is used between
-consecutive blocks. This requires double the dictionary size to get similar
-compression performace to 7-zip, but the memory requirement is only 5-7 times
-the dictionary size so this is not a problem. 
+The library uses a parallel buffered radix matchfinder to enable multithreaded
+compression without splitting the input into large chunks or duplicating the
+entire matchfinder/encoder combination for every 2 threads. The RMF also has
+greater time and memory efficiency, using about 5.5x the dictionary size
+instead of 11.5 x for BT4. This rises to 6.5x for dictionary sizes above 64Mb.
+The library also uses a modified LZMA2 encoder employing speed tweaks from
+Zstandard. The result is faster compression in less RAM, especially when using
+4+ threads.
+
+The RMF is a block algorithm, which reduces the effective dictionary size. This
+results in slightly less compression than BT4 for a given dictionary size. To
+compensate, you can raise the compression level (the most efficient way) or set
+high-compression mode using -ma=3 on the command line.
 
 The radix match finder only finds the longest match (up to the fast length
 value) which slightly decreases compression performance when using optimized
-encoding (level 5 and up). To compensate, Radyx has a hybrid mode which adds a
-small sliding window dictionary and hash chain. This is enabled at level 7 and
+encoding (level 4 and up). To compensate, Radyx has a hybrid mode which adds a
+small sliding window dictionary and hash chain. This is enabled at level 8 and
 above.
 
 Radyx has NO WARRANTY and is released under the GNU General Public License 3.0:
@@ -31,7 +30,7 @@ www.gnu.org/licenses/gpl.html
 
 
 ===============================================================================
-    Radyx 0.9.1 Command Line
+    Radyx 0.9.2 Command Line
 ===============================================================================
 
 The command line format is 7-zip compatible wherever possible:
@@ -49,7 +48,7 @@ must be used for this. The only valid command is 'a' to add files to a new
 archive.
 
 See the 7-zip documentation for more details about switches. The -mb switch has
-a different meaning in Radyx and extra switches (-ar, -mds, -mo, -q, -z) have
+a different meaning in Radyx and extra switches (-ar, -mds, -mo, -msd, -q) have
 been added. The -ma switch has an expanded range of values.
 
 The following switches are recognized:
@@ -66,31 +65,31 @@ The following switches are recognized:
    <file_ref> ::= @{listfile} | !{wildcard}
    Specifies additional filenames to include.
 
--ma=<0|1|2>
-   Set compression mode: 0 = fast, 1 = normal, 2 = best (hybrid).
-   Default is 1.
+-ma=<0|1|2|3>
+   Set compression mode: 0 = fast, 1 = normal, 2 = best (hybrid), 3 = enable
+   high-compression levels (1 - 9). Default is 2.
 
--mb={N}[b|k|m]
+-mb={N}  (6 - 12)
    *** Note: different from 7-zip. Coder binding is fixed in Radyx.
-   Set buffer size for buffering of linked lists. This should normally be left
-   at the default value which varies from 128 kb - 2 Mb depending on the
-   dictionary size and number of threads. Processors with no L3 cache such as
-   the Intel Atom require a small value (4 kb - 16 kb) for fastest performance.
+   Set buffer relative logarithmic size for buffering of linked lists. The
+   buffer size is calculated as 2 ^ (dictionary_log - buffer_log). Note the
+   inverse relationship between the parameter and the actual size. Higher
+   values raise speed and decrease compression.
 
--md={N}[b|k|m|g]  (256 kb - 4 Gb)
-   Set the dictionary size. Default is 32 Mb. A maximum dictionary size of
+-md={N}[b|k|m|g]  (1 Mb - 1 Gb)
+   Set the dictionary size. Default is 16 Mb. A maximum dictionary size of
    1/16th of the total RAM installed in the computer is recommended.
 
--mds={N}[b|k]  (0 - 64 kb)
-   Set the secondary dictionary size for hybrid mode. Default is 4 kb.
+-mds={N}[b|k]  (16 b - 16 kb)
+   Set the secondary dictionary size for hybrid mode.
 
 -mf=<on|off>
    Enable / disable BCJ filtering for executable files. Default is on.
 
--mfb={N}  (even numbers 6 - 254)
+-mfb={N}  (even numbers 6 - 273)
    Set fast length (fast bytes). When a match of at least this length is
-   encountered, it is encoded without any further attempt at optimization. This
-   must be an even number. Default is 32.
+   encountered, it is encoded without any further attempt at optimization.
+   Default is 48.
 
 -mlc={N}  (0 - 4)
    Set the number of literal context bits. Default is 3.
@@ -99,7 +98,7 @@ The following switches are recognized:
    Set the number of literal position bits. Default is 0.
 
 -mmc={N}
-   Set the number of match cycles (hybrid mode only). Default is 8.
+   Set the number of match cycles (hybrid mode only). Default is 1.
 
 -mmt={N}  (1 - number of cores)
    Set the number of threads to use. This should not be greater than the
@@ -121,8 +120,19 @@ The following switches are recognized:
    {N}f         Set the limit for number of files in one solid block
    {N}[b|k|m|g] Set the limit for the total size of a solid block in bytes
 
+-msd={N}  (even numbers 6 - 254)
+   Set search depth. String matches will be resolved up to this length. This
+   will be rounded down to an even number.
+
 -mtc=<off|on>
    Store file creation timestamps.
+
+-mx={N}  (1 - 12 or 1 - 9)
+   Set compression parameters to efficiently target a given level of
+   compression. This is the optimal way to control compression ratio in most
+   cases. If high-compression mode is enabled (-ma=3), parameters will be set
+   to gain the most compression from a given dictionary size, where 1 = 1 Mb
+   and 9 = 256 Mb. 
 
 -q
    Set quiet mode. Only errors and warnings will be displayed.
@@ -130,6 +140,9 @@ The following switches are recognized:
 -r[- | 0]
    Recurse subdirectories. Append '-' to disable (default) or '0' to recurse
    for wildcards only.
+
+-spf
+   Store full path names.
 
 -ssw
    Compress files that are open for writing.
@@ -144,10 +157,3 @@ The following switches are recognized:
    is enabled, the exclusion can include a path which must match part or all
    of the path of files to be excluded, starting from the directory where
    recursion will begin.
-
--z={N}  (1 - 1000)
-   Incompressible data filter. This performs a fast check early in the radix
-   sort stage to determine if the block of data will compress poorly or not at
-   all, so time can be saved by storing the data. A setting of 10 will detect
-   most of the data in zip files as incompressible. Note that zip files are
-   often compressible by LZMA but only by a few percent.

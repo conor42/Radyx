@@ -3,7 +3,7 @@
 // Class: OutputFile
 //        Provides greater control over file opening / writing
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -25,6 +25,9 @@
 #include <algorithm>
 #include "OutputFile.h"
 
+namespace Radyx {
+
+#ifdef _WIN32
 
 OutputFile::OutputFile()
 	: handle(INVALID_HANDLE_VALUE),
@@ -125,4 +128,8 @@ void OutputFile::AddError(std::ios_base::iostate error)
 	if ((exception_flags & error_state) != 0) {
 		throw std::ios_base::failure("");
 	}
+}
+
+#endif // _WIN32
+
 }

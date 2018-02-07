@@ -3,7 +3,7 @@
 // Class: RadyxOptions
 //        Compression and archiving options, and the list of file specs to add
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -33,11 +33,12 @@
 #endif
 #include "CharType.h"
 #include "Path.h"
-#include "ArchiveCompressor.h"
 #include "OptionalSetting.h"
 #include "Lzma2Options.h"
 
 namespace Radyx {
+
+class ArchiveCompressor;
 
 class RadyxOptions
 {
@@ -57,7 +58,7 @@ public:
 		bool recurse;
 		FileSpec() {}
 		FileSpec(const _TCHAR* path_, Recurse recurse_);
-		void SetFullPath(const _TCHAR* full_path, unsigned length);
+		void SetFullPath(const _TCHAR* full_path);
 	};
 
 	class InvalidParameter
@@ -77,6 +78,7 @@ public:
 	FsString working_dir;
 	Recurse default_recurse;
 	bool share_deny_none;
+	bool store_full_paths;
 //	bool yes_to_all;
 	bool multi_thread;
 	unsigned thread_count;

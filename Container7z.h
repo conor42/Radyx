@@ -6,7 +6,7 @@
 // Authors: Conor McCarthy
 //          Igor Pavlov
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 // Based on 7-zip 9.20 copyright 2010 Igor Pavlov
 //
 // This file is part of Radyx.
@@ -31,9 +31,7 @@
 
 #include "ArchiveCompressor.h"
 #include "UnitCompressor.h"
-#include "CompressorInterface.h"
 #include "CompressedUint64.h"
-#include "ThreadPool.h"
 #include "OutputFile.h"
 #include "CharType.h"
 
@@ -45,8 +43,6 @@ public:
 	static void ReserveSignatureHeader(OutputStream& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
 		UnitCompressor& unit_comp,
-		CompressorInterface& compressor,
-		ThreadPool& threads,
 		OutputStream& out_stream);
 
 private:
@@ -82,11 +78,10 @@ private:
 	class Writer
 	{
 	public:
-		Writer(UnitCompressor& unit_comp_, CompressorInterface* compressor_, ThreadPool& threads_, OutputStream& out_stream_)
+		Writer(UnitCompressor& unit_comp_, OutputStream& out_stream_, bool compress_)
 			: unit_comp(unit_comp_),
-			compressor(compressor_),
-			threads(threads_),
-			out_stream(out_stream_) {}
+			out_stream(out_stream_),
+            compress(compress_) {}
 		~Writer() { Flush(); }
 		inline void WriteByte(uint8_t byte);
 		inline void WriteBytes(const uint8_t* buf, size_t count);
@@ -99,10 +94,9 @@ private:
 
 	private:
 		UnitCompressor& unit_comp;
-		CompressorInterface* compressor;
-		ThreadPool& threads;
 		OutputStream& out_stream;
 		Crc32 crc32;
+        bool compress;
 
 		Writer(const Writer&) = delete;
 		Writer& operator=(const Writer&) = delete;
@@ -149,15 +143,12 @@ private:
 		Writer& writer);
 	static void WriteHeader(const ArchiveCompressor& arch_comp,
 		UnitCompressor& unit_comp,
-		CompressorInterface &compressor,
-		ThreadPool& threads,
 		OutputStream& out_stream);
 	static uint_fast32_t WriteHeaderHeader(UnitCompressor& unit_comp,
-		CompressorInterface& compressor,
 		uint_least64_t header_offset,
 		uint_least64_t header_pack_size,
 		uint_least64_t header_unpack_size,
-		ThreadPool& threads,
+        CoderInfo& coder_info,
 		OutputStream& out_stream);
 	static void WriteSignatureHeader(uint_least64_t header_offset,
 		uint_least64_t header_size,

@@ -6,7 +6,7 @@
 // Authors: Igor Pavlov
 //          Conor McCarthy
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 // Based on 7-zip 9.20 copyright 2010 Igor Pavlov
 //
 // This file is part of Radyx.

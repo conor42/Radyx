@@ -13,12 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="fast-lzma2">
+      <UniqueIdentifier>{fdc32ffb-0cc5-4063-b579-de0c0d30083e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ArchiveCompressor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\AsyncWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\BcjTransform.h">
@@ -39,9 +39,6 @@
     <ClInclude Include="..\..\CompressedUint64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\CompressorInterface.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Container7z.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -57,40 +54,16 @@
     <ClInclude Include="..\..\ErrorCode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\FlagTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\HashChain.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\IoException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Lzma2Compressor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Lzma2Encoder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Lzma2Options.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\MatchResult.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\MatchTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\MatchTableBuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\OptionalSetting.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\OutputFile.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\PackedMatchTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Path.h">
@@ -102,16 +75,7 @@
     <ClInclude Include="..\..\RadyxOptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RangeEncoder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Strings.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\StructuredMatchTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\UnitCompressor.h">
@@ -120,12 +84,78 @@
     <ClInclude Include="..\..\winlean.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\atomic.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\compiler.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\count.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\data_block.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\error_private.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fast-lzma2.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fastpos_table.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fl2_compress_internal.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fl2_errors.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fl2_internal.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\lzma2_dec.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\lzma2_enc.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\mem.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\platform.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\pool.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\radix_engine.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\radix_internal.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\radix_mf.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\range_enc.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\threading.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\util.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\xxhash.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\ArchiveCompressor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\AsyncWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\BcjX86.cpp">
@@ -149,18 +179,6 @@
     <ClCompile Include="..\..\IoException.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Lzma2Encoder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Lzma2Options.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\MatchTable.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\MatchTableBuilder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\OutputFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -173,19 +191,55 @@
     <ClCompile Include="..\..\RadyxOptions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RangeEncoder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Strings.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\UnitCompressor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Radyx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\error_private.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\fl2_common.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\fl2_compress.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\fl2_decompress.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\lzma2_dec.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\lzma2_enc.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\pool.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\radix_bitpack.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\radix_mf.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\radix_struct.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\range_enc.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\threading.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\xxhash.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -3,7 +3,7 @@
 // Class: Progress
 //        Progress meter
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -27,12 +27,10 @@
 
 namespace Radyx {
 
-Progress::Progress(uint_least64_t total_bytes_, unsigned encode_weight_)
+Progress::Progress(uint_least64_t total_bytes_)
 	: total_bytes(total_bytes_),
 	progress_bytes(0),
 	next_update(total_bytes_ / 100),
-	build_weight(kWeightUnitTotal - encode_weight_),
-	encode_weight(encode_weight_),
 	display_length(0)
 {
 }

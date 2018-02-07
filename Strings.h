@@ -3,7 +3,7 @@
 // Class: Strings
 //        Message strings
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -30,10 +30,13 @@ namespace Radyx {
 class Strings
 {
 public:
+	static const _TCHAR kHelpString[];
 	static const _TCHAR kExtractionUnsupported[];
 	static const _TCHAR kNoCommandSpecified[];
 	static const _TCHAR kLcLpNoGreaterThan4[];
 	static const _TCHAR kSearching[];
+	static const _TCHAR kCreatingArchive_[];
+	static const _TCHAR kNameCollision_[];
 	static const _TCHAR kAdding_[];
 	static const _TCHAR kCannotOpen_[];
 	static const _TCHAR kCannotRead_[];
@@ -63,6 +66,7 @@ public:
 	static const _TCHAR kCannotOpenList[];
 	static const _TCHAR kCannotReadList[];
 	static const _TCHAR kUnknownError[];
+	static const _TCHAR kDone[];
 };
 
 }

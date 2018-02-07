@@ -3,7 +3,7 @@
 // Class: Progress
 //        Progress meter
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -35,47 +35,28 @@ namespace Radyx {
 class Progress
 {
 public:
-	static const unsigned kWeightUnitBits = 3;
-	static const unsigned kWeightUnitTotal = 1 << kWeightUnitBits;
-
-	Progress(uint_least64_t total_bytes_, unsigned encode_weight_);
+	Progress(uint_least64_t total_bytes_);
 	~Progress();
 	inline void Show();
 	inline void Rewind();
 	void RewindLocked();
 	inline void Erase();
-	inline void BuildUpdate(size_t bytes_done);
-	inline void EncodeUpdate(size_t bytes_done);
-	inline void Adjust(int_least64_t size_change);
+    void Update(size_t bytes_done);
+    inline void Adjust(int_least64_t size_change);
 	inline std::mutex& GetMutex() { return mtx; }
 
 private:
 	unsigned ShowLocked();
-	void Update(size_t bytes_done);
 
 	uint_least64_t total_bytes;
 	std::atomic_uint_fast64_t progress_bytes;
 	volatile uint_least64_t next_update;
 	std::mutex mtx;
-	unsigned build_weight;
-	unsigned encode_weight;
 	int display_length;
 
 	Progress(const Progress&) = delete;
 	Progress& operator=(const Progress&) = delete;
 };
-
-void Progress::BuildUpdate(size_t bytes_done)
-{
-	bytes_done = (bytes_done * build_weight) >> kWeightUnitBits;
-	Update(bytes_done);
-}
-
-void Progress::EncodeUpdate(size_t bytes_done)
-{
-	bytes_done = (bytes_done * encode_weight) >> kWeightUnitBits;
-	Update(bytes_done);
-}
 
 void Progress::Adjust(int_least64_t size_change)
 {

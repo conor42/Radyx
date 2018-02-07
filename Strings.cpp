@@ -3,7 +3,7 @@
 // Class: Strings
 //        Message strings
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -27,10 +27,31 @@
 
 namespace Radyx {
 
+const _TCHAR Strings::kHelpString[] = _T(
+"Usage: radyx <command> [<switches>...] <archive_name> [<file_names>...]\n"
+"\n"
+"<Commands>\n"
+"  a : Add files to archive\n"
+"\n"
+"<Switches>\n"
+"  -- : Stop switches parsing\n"
+"  @listfile : set path to listfile that contains file names\n"
+"  -ar[-] : Read more input while compressing (default: on)\n"
+"  -q[-] : disable input filename display\n"
+"  -i[r[-|0]]{@listfile|!wildcard} : Include filenames\n"
+"  -m{Parameters} : set compression method\n"
+"    -mmt[N] : set number of CPU threads\n"
+"    -mx[N] : set compression level: -mx1 (fastest) ... -mx12 (ultra)\n"
+"  -r[-|0] : Recurse subdirectories\n"
+"  -ssw : compress shared files\n"
+"  -w[{path}] : assign work directory\n"
+"  -x[r[-|0]]{@listfile|!wildcard} : exclude filenames\n");
 const _TCHAR Strings::kExtractionUnsupported[] = _T("This version of Radyx does not support extraction.\nUse 7-zip or a compatible program.");
 const _TCHAR Strings::kNoCommandSpecified[] = _T("No command specified");
 const _TCHAR Strings::kLcLpNoGreaterThan4[] = _T("Literal context bits (-mlc) + literal position bits (-mlp) must be no greater than 4.");
 const _TCHAR Strings::kSearching[] = _T("Searching...");
+const _TCHAR Strings::kCreatingArchive_[] = _T("Creating archive ");
+const _TCHAR Strings::kNameCollision_[] = _T("Duplicate filenames: ");
 const _TCHAR Strings::kAdding_[] = _T("Adding ");
 const _TCHAR Strings::kCannotOpen_[] = _T("Cannot open ");
 const _TCHAR Strings::kCannotRead_[] = _T("Cannot read ");
@@ -60,5 +81,5 @@ const _TCHAR Strings::kMissingArchiveName[] = _T("Missing archive name.");
 const _TCHAR Strings::kCannotOpenList[] = _T("Cannot open list file");
 const _TCHAR Strings::kCannotReadList[] = _T("Cannot read list file");
 const _TCHAR Strings::kUnknownError[] = _T("Unknown error.");
-
+const _TCHAR Strings::kDone[] = _T("Done.");
 }

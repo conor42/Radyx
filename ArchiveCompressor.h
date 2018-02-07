@@ -4,7 +4,7 @@
 //          Reads input files into the unit compressor and collects
 //          information for the archive database
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -31,10 +31,8 @@
 #include "common.h"
 #include "OutputFile.h"
 #include "Path.h"
-#include "ThreadPool.h"
 #include "OptionalSetting.h"
 #include "UnitCompressor.h"
-#include "CompressorInterface.h"
 #include "Crc32.h"
 
 namespace Radyx {
@@ -110,9 +108,7 @@ public:
 	ArchiveCompressor();
 	void Add(const _TCHAR* path, size_t root, uint_least64_t size);
 	uint_least64_t Compress(UnitCompressor& unit_comp,
-		CompressorInterface& compressor,
 		const RadyxOptions& options,
-		ThreadPool& threads,
 		OutputStream& out_stream);
 	const std::list<FileInfo>& GetFileList() const { return file_list; }
 	const std::list<DataUnit>& GetUnitList() const { return unit_list; }
@@ -123,11 +119,10 @@ private:
 	static const _TCHAR extensions[];
 
 	void EliminateDuplicates();
+	void DetectCollisions();
 	bool AddFile(FileInfo& fi,
 		UnitCompressor& unit_comp,
-		CompressorInterface& compressor,
 		const RadyxOptions& options,
-		ThreadPool& threads,
 		Progress& progress,
 		OutputStream& out_stream);
 	static unsigned GetExtensionIndex(const _TCHAR* ext);

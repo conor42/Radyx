@@ -2,7 +2,7 @@
 //
 // Commonly used inclusions and definitions.
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -29,7 +29,7 @@
 #include <thread>
 #include <cassert>
 
-#if (_MSC_VER < 1900)
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
 #define noexcept
 #endif
 

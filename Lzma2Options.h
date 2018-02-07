@@ -3,7 +3,7 @@
 // Class: Lzma2Options
 //        Options for LZMA2 encoding
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -45,28 +45,31 @@ struct Lzma2Options
 	unsigned lp;
 	unsigned pb;
 	OptionalSetting<unsigned> fast_length;
-	OptionalSetting<unsigned> match_cycles;
+    OptionalSetting<unsigned> search_depth;
+    OptionalSetting<unsigned> match_cycles;
 	OptionalSetting<Mode> encoder_mode;
 	unsigned compress_level;
-	OptionalSetting<unsigned> second_dict_bits;
+	OptionalSetting<unsigned> second_dict_size;
 	OptionalSetting<size_t> dictionary_size;
-	OptionalSetting<size_t> match_buffer_size;
-	unsigned block_overlap;
+	OptionalSetting<unsigned> match_buffer_log;
+    OptionalSetting<unsigned> divide_and_conquer;
+    OptionalSetting<unsigned> block_overlap;
 	unsigned random_filter;
 	Lzma2Options()
 		: lc(3),
 		lp(0),
 		pb(2),
-		fast_length(32),
+		fast_length(48),
+        search_depth(40),
 		match_cycles(8),
-		encoder_mode(kNormalMode),
-		compress_level(5),
-		second_dict_bits(12),
-		dictionary_size(UINT32_C(32) << 20),
-		match_buffer_size(0),
+		encoder_mode(kBestMode),
+		compress_level(8),
+		second_dict_size(512),
+		dictionary_size(UINT32_C(16) << 20),
+		match_buffer_log(8),
+        divide_and_conquer(1),
 		block_overlap(2),
 		random_filter(0) {}
-	void LoadCompressLevel();
 };
 
 }

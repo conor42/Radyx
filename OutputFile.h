@@ -3,7 +3,7 @@
 // Class: OutputFile
 //        Provides greater control over file opening / writing
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -25,12 +25,17 @@
 #ifndef RADYX_OUTPUT_FILE_H
 #define RADYX_OUTPUT_FILE_H
 
+#include <ios>
+
 #include "common.h"
 
 #ifdef _WIN32
+
 #include "winlean.h"
 #include "CharType.h"
 
+namespace Radyx {
+	
 class OutputFile
 {
 public:
@@ -56,12 +61,18 @@ private:
 
 typedef OutputFile OutputStream;
 
+}
+
 #else 
 
 #include <ostream>
 
+namespace Radyx {
+
 typedef std::ostream OutputStream;
 typedef std::ofstream OutputFile;
+
+}
 
 #endif // _WIN32
 

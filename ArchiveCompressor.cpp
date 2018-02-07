@@ -4,7 +4,7 @@
 //          Reads input files into the unit compressor and collects
 //          information for the archive database
 //
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -37,8 +37,6 @@
 #include "CharType.h"
 #include "UnitCompressor.h"
 #include "ArchiveCompressor.h"
-#include "UnitCompressor.h"
-#include "Lzma2Compressor.h"
 #include "Strings.h"
 #include "IoException.h"
 
@@ -49,35 +47,33 @@ _T("chm\0hxi\0hxs")
 _T("\0gif\0jpeg\0jpg\0jp2\0png\0tiff\0bmp\0ico\0psd\0psp")
 _T("\0awg\0ps\0eps\0cgm\0dxf\0svg\0vrml\0wmf\0emf\0ai\0md")
 _T("\0cad\0dwg\0pps\0key\0sxi")
-_T("\0max\0003ds")
+_T("\0max\0")_T("3ds")
 _T("\0iso\0bin\0nrg\0mdf\0img\0pdi\0tar\0cpio\0xpi")
 _T("\0vfd\0vhd\0vud\0vmc\0vsv")
 _T("\0vmdk\0dsk\0nvram\0vmem\0vmsd\0vmsn\0vmss\0vmtm")
-_T("\0inl\0inc\0idl\0acf\0asa\0h\0hpp\0hxx\0c\0cpp\0cxx\0rc\0java\0cs\0pas\0bas\0vb\0cls\0ctl\0frm\0dlg\0def")
+_T("\0inl\0inc\0idl\0acf\0asa\0h\0hpp\0hxx\0c\0cpp\0cxx\0m\0mm\0go\0swift\0rc\0java\0cs\0rs\0pas\0bas\0vb\0cls\0ctl\0frm\0dlg\0def")
 _T("\0f77\0f\0f90\0f95")
-_T("\0asm\0sql\0manifest\0dep")
+_T("\0asm\0s\0sql\0manifest\0dep")
 _T("\0mak\0clw\0csproj\0vcproj\0sln\0dsp\0dsw")
 _T("\0class")
-_T("\0bat\0cmd")
+_T("\0bat\0cmd\0bash\0sh")
 _T("\0xml\0xsd\0xsl\0xslt\0hxk\0hxc\0htm\0html\0xhtml\0xht\0mht\0mhtml\0htw\0asp\0aspx\0css\0cgi\0jsp\0shtml")
-_T("\0awk\0sed\0hta\0js\0php\0php3\0php4\0php5\0phptml\0pl\0pm\0py\0pyo\0rb\0sh\0tcl\0vbs")
+_T("\0awk\0sed\0hta\0js\0json\0php\0php3\0php4\0php5\0phptml\0pl\0pm\0py\0pyo\0rb\0tcl\0ts\0vbs")
 _T("\0text\0txt\0tex\0ans\0asc\0srt\0reg\0ini\0doc\0docx\0mcw\0dot\0rtf\0hlp\0xls\0xlr\0xlt\0xlw\0ppt\0pdf")
 _T("\0sxc\0sxd\0sxi\0sxg\0sxw\0stc\0sti\0stw\0stm\0odt\0ott\0odg\0otg\0odp\0otp\0ods\0ots\0odf")
 _T("\0abw\0afp\0cwk\0lwp\0wpd\0wps\0wpt\0wrf\0wri")
 _T("\0abf\0afm\0bdf\0fon\0mgf\0otf\0pcf\0pfa\0snf\0ttf")
 _T("\0dbf\0mdb\0nsf\0ntf\0wdb\0db\0fdb\0gdb")
 _T("\0pdb\0pch\0idb\0ncb\0opt")
-_T("\0003gp\0avi\0mov\0mpeg\0mpg\0mpe\0wmv")
+_T("\0")_T("3gp\0avi\0mov\0mpeg\0mpg\0mpe\0wmv")
 _T("\0aac\0ape\0fla\0flac\0la\0mp3\0m4a\0mp4\0ofr\0ogg\0pac\0ra\0rm\0rka\0shn\0swa\0tta\0wv\0wma\0wav")
 _T("\0swf")
-_T("\0lzma\0007z\0ace\0arc\0arj\0bz\0bz2\0deb\0lzo\0lzx\0gz\0pak\0rpm\0sit\0tgz\0tbz\0tbz2\0tgz\0cab\0ha\0lha\0lzh\0rar\0zoo")
+_T("\0lzma\0")_T("7z\0xz\0ace\0arc\0arj\0bz\0bz2\0deb\0lzo\0lzx\0gz\0pak\0rpm\0sit\0tgz\0tbz\0tbz2\0tgz\0cab\0ha\0lha\0lzh\0rar\0zoo")
 _T("\0zip\0jar\0ear\0war\0msi")
 _T("\0obj\0lib\0tlb\0o\0a\0so")
 _T("\0exe\0dll\0ocx\0vbx\0sfx\0sys\0awx\0com\0out\0");
 
 #ifdef _WIN32
-
-#pragma warning(disable:4996)
 
 ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_none)
 {
@@ -194,15 +190,21 @@ static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const Arch
 }
 
 uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
-	CompressorInterface& compressor,
 	const RadyxOptions& options,
-	ThreadPool& threads,
 	OutputStream& out_stream)
 {
 	if (file_list.size() == 0) {
 		return 0;
 	}
 	EliminateDuplicates();
+	if (options.store_full_paths) {
+		for (auto& fs : file_list) {
+			fs.root = 0;
+		}
+	}
+	else {
+		DetectCollisions();
+	}
 	// Sort the file list by extension index then name
 	file_list.sort(CompareFileInfo);
 	auto it = file_list.begin();
@@ -214,16 +216,14 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 	unsigned exe_group = GetExtensionIndex(_T("exe"));
 	if (options.bcj_filter && it->ext_index >= exe_group) {
 		// Enable BCJ if starting with executables
-		unit_comp.Reset(true);
+		unit_comp.Begin(true);
 	}
-	Progress progress(initial_total_bytes, compressor.GetEncodeWeight());
+	Progress progress(initial_total_bytes);
 	while (!g_break) {
 		unsigned ext_index = it->ext_index;
 		if(!AddFile(*it,
 			unit_comp,
-			compressor,
 			options,
-			threads,
 			progress,
 			out_stream))
 		{
@@ -257,16 +257,16 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 			// If any data was added, compress what remains and add the unit to the list
 			if (unit.unpack_size != 0) {
 				progress.Show();
-				unit_comp.Compress(compressor, threads, out_stream, &progress);
+				unit_comp.Compress(out_stream, &progress);
 				unit.used_bcj = unit_comp.UsedBcj();
 				if (unit.used_bcj) {
 					unit.bcj_info = unit_comp.GetBcjCoderInfo();
 				}
 				// Wait for thread
 				unit_comp.WaitCompletion();
-				unit.coder_info = compressor.GetCoderInfo();
+				unit.coder_info = unit_comp.GetCoderInfo();
 				// Update total packed size
-				packed_size += compressor.Finalize(out_stream);
+				packed_size += unit_comp.Finalize(out_stream);
 				packed_size += unit_comp.GetPackSize();
 				// Get final file position and the unit packed size
 				uint_least64_t out_file_pos = out_stream.tellp();
@@ -280,7 +280,7 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 				break;
 			}
 			// Reset the unit compressor, turning on BCJ if adding executables
-			unit_comp.Reset(options.bcj_filter && it->ext_index >= exe_group);
+			unit_comp.Begin(options.bcj_filter && it->ext_index >= exe_group);
 			unit.file_count = 0;
 			unit.unpack_size = 0;
 		}
@@ -332,11 +332,37 @@ void ArchiveCompressor::EliminateDuplicates()
 	}
 }
 
+void ArchiveCompressor::DetectCollisions()
+{
+	file_list.sort([](const ArchiveCompressor::FileInfo& first, const ArchiveCompressor::FileInfo& second)
+	{
+		if (&first.dir == &second.dir) {
+			return first.name.FsCompare(second.name) < 0;
+		}
+		ptrdiff_t comp = first.dir.FsCompare(first.root, second.dir, second.root);
+		if (comp == 0) {
+			return first.name.FsCompare(second.name) < 0;
+		}
+		return comp < 0;
+	});
+	auto it = file_list.begin();
+	auto prev = it;
+	for (++it; it != file_list.end();) {
+		auto next = std::next(it);
+		if ((&it->dir == &prev->dir || it->dir.FsCompare(it->root, prev->dir, prev->root) == 0)
+			&& it->name.FsCompare(prev->name) == 0)
+		{
+			std::Tcerr << Strings::kNameCollision_ << (it->dir.c_str() + it->root) << it->name << std::endl;
+			throw std::invalid_argument("");
+		}
+		else prev = it;
+		it = next;
+	}
+}
+
 bool ArchiveCompressor::AddFile(FileInfo& fi,
 	UnitCompressor& unit_comp,
-	CompressorInterface& compressor,
 	const RadyxOptions& options,
-	ThreadPool& threads,
 	Progress& progress,
 	OutputStream& out_stream)
 {
@@ -368,7 +394,7 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 		if (unit_comp.GetAvailableSpace() == 0) {
 			// Unit compressor is full so compress
 			progress.Show();
-			unit_comp.Compress(compressor, threads, out_stream, &progress);
+			unit_comp.Compress(out_stream, &progress);
 			unit_comp.Shift();
 			did_compress = true;
 		}

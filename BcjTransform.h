@@ -3,7 +3,7 @@
 // Class:   BcjTransform
 //          Abstract base class for BCJ transforms
 //          
-// Copyright 2015 Conor McCarthy
+// Copyright 2015-present Conor McCarthy
 //
 // This file is part of Radyx.
 //
