@@ -26,7 +26,7 @@
 
 namespace Radyx {
 
-size_t CoderInfo::MethodId::GetIdString(IdString& str) const
+size_t CoderInfo::MethodId::GetIdString(IdString& str) const noexcept
 {
 	uint_least64_t id = method_id;
 	size_t length = 1;

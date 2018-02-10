@@ -61,15 +61,15 @@ public:
 	inline ptrdiff_t FsCompare(const Path& second) const;
 	FsString GetName() const;
 	void ConvertSeparators();
-	inline size_t GetNamePos() const;
+	inline size_t GetNamePos() const noexcept;
 	bool IsPureRelativePath() const;
 	inline bool IsExtendedLength() const;
 	inline bool IsDevNull() const;
 	static bool MatchFileSpec(const _TCHAR* name, const _TCHAR* spec);
-	static inline size_t GetNamePos(const _TCHAR* name);
-	static inline size_t GetExtPos(const _TCHAR* name);
-	static inline bool IsRelativeAlias(const _TCHAR* name);
-	static inline bool IsWildcard(const _TCHAR* name);
+	static inline size_t GetNamePos(const _TCHAR* name) noexcept;
+	static inline size_t GetExtPos(const _TCHAR* name) noexcept;
+	static inline bool IsRelativeAlias(const _TCHAR* name) noexcept;
+	static inline bool IsWildcard(const _TCHAR* name) noexcept;
 };
 
 void Path::AppendPathSeparator()
@@ -89,7 +89,7 @@ inline ptrdiff_t Path::FsCompare(const Path& second) const
 	return FsCompare(0, npos, second, 0, npos);
 }
 
-size_t Path::GetNamePos() const
+size_t Path::GetNamePos() const noexcept
 {
 	size_t name_pos = find_last_of(separator);
 	if (name_pos != npos) return name_pos + 1;
@@ -101,7 +101,7 @@ size_t Path::GetNamePos() const
 	return 0;
 }
 
-size_t Path::GetNamePos(const _TCHAR* path)
+size_t Path::GetNamePos(const _TCHAR* path) noexcept
 {
 	const _TCHAR* name = _tcsrchr(path, separator);
 	if (name != nullptr) {
@@ -115,7 +115,7 @@ size_t Path::GetNamePos(const _TCHAR* path)
 	return 0;
 }
 
-size_t Path::GetExtPos(const _TCHAR* name)
+size_t Path::GetExtPos(const _TCHAR* name) noexcept
 {
 	const _TCHAR* ext = _tcsrchr(name, '.');
 	if (ext == nullptr) {
@@ -124,7 +124,7 @@ size_t Path::GetExtPos(const _TCHAR* name)
 	return ext + 1 - name;
 }
 
-bool Path::IsRelativeAlias(const _TCHAR* name)
+bool Path::IsRelativeAlias(const _TCHAR* name) noexcept
 {
 	for (; *name != 0; ++name) {
 		if (*name != '.')
@@ -133,7 +133,7 @@ bool Path::IsRelativeAlias(const _TCHAR* name)
 	return true;
 }
 
-bool Path::IsWildcard(const _TCHAR* name)
+bool Path::IsWildcard(const _TCHAR* name) noexcept
 {
 	for (; *name != '\0'; ++name) {
 		if (*name == wildcard_all || *name == wildcard_1char)

@@ -26,28 +26,44 @@
 #define RADYX_UNIT_COMPRESSOR_H
 
 #include "common.h"
-#include "OutputFile.h"
+#include "CoderBuffer.h"
+#include "fast-lzma2/fast-lzma2.h"
 #include "Thread.h"
 #include "RadyxOptions.h"
-#include "BcjX86.h"
+#include "ArchiveStreamIn.h"
+#include "InPlaceFilter.h"
+#include "OutputStream.h"
 #include "Progress.h"
 #include "ErrorCode.h"
-#include "fast-lzma2/fast-lzma2.h"
 
 namespace Radyx {
 
 class UnitCompressor
 {
 public:
-	UnitCompressor(RadyxOptions& options, bool do_bcj);
+	UnitCompressor(RadyxOptions& options, size_t read_extra);
 	~UnitCompressor();
-	void Begin(bool do_bcj);
-	void Begin(bool do_bcj, bool async_read_);
+	void Begin();
+	void Begin(bool async_read_);
 	size_t GetAvailableSpace() const;
-	uint8_t* GetAvailableBuffer() { return data_buffer[buffer_index].get() + block_end; }
+	uint8_t* GetAvailableBuffer() { return data_buffers[buffer_index].get() + block_end; }
 	void AddByteCount(size_t count) { block_end += count; }
 	void RemoveByteCount(size_t count) { block_end -= count; }
-	void Compress(OutputStream& out_stream,
+	void Compress(ArchiveStreamIn* inStream, OutputStream& out_stream, FilterList* filters, std::list<CoderInfo>& coder_info, Progress* progress);
+	bool IsFull() const {
+		return data_buffers[buffer_index].IsFull();
+	}
+	size_t Read(ArchiveStreamIn* inStream) {
+		return data_buffers[buffer_index].Read(inStream);
+	}
+	void Put(uint8_t c) {
+		data_buffers[buffer_index].Put(c);
+	}
+	void Write(const void* data,
+		size_t count,
+		OutputStream& out_stream);
+	void Compress(FilterList* filters,
+		OutputStream& out_stream,
 		Progress* progress);
 	void Shift();
 	void Write(OutputStream& out_stream);
@@ -55,11 +71,16 @@ public:
     size_t Finalize(OutputStream& out_stream);
     void CheckError() const;
 	inline void WaitCompletion();
-	size_t GetUnpackSize() const { return unpack_size; }
-	size_t GetPackSize() const { return pack_size; }
-	bool UsedBcj() const { return bcj.get() != nullptr; }
-	CoderInfo GetBcjCoderInfo() const { return bcj->GetCoderInfo(); }
 	size_t GetMemoryUsage() const { return FL2_estimateCCtxSize_usingCCtx(cctx) + dictionary_size * (1 + async_read); }
+	bool Unprocessed() const noexcept {
+		return data_buffers[buffer_index].Unprocessed();
+	}
+	size_t GetUnpackSize() const noexcept {
+		return unpack_size;
+	}
+	size_t GetPackSize() const noexcept {
+		return pack_size;
+	}
 
 private:
 	struct ThreadArgs
@@ -83,8 +104,7 @@ private:
     static void ThreadFn(void* pwork, int unused);
 
     FL2_CCtx* cctx;
-	std::unique_ptr<uint8_t[]> data_buffer[2];
-	std::unique_ptr<BcjTransform> bcj;
+	CoderBuffer data_buffers[2];
 	size_t dictionary_size;
 	size_t block_start;
 	size_t block_end;
@@ -100,6 +120,8 @@ private:
 
 	UnitCompressor(const UnitCompressor&) = delete;
 	UnitCompressor& operator=(const UnitCompressor&) = delete;
+	UnitCompressor(UnitCompressor&&) = delete;
+	UnitCompressor& operator=(UnitCompressor&&) = delete;
 };
 
 void UnitCompressor::WaitCompletion()

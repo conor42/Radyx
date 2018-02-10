@@ -1,9 +1,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Class: Thread
-//        Simple worker thread class to eliminate extra thread creation overhead
+// Class:   ArchiveStreamIn
+//          Interface for reading data into a buffer
 //
-// Copyright 2015-present Conor McCarthy
+// Copyright 2017 Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -22,40 +22,20 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef RADYX_THREAD_H
-#define RADYX_THREAD_H
+#ifndef RADYX_ARCHIVE_STREAM_IN_H
+#define RADYX_ARCHIVE_STREAM_IN_H
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
+#include "common.h"
 
 namespace Radyx {
 
-class Thread
+class ArchiveStreamIn
 {
 public:
-    Thread();
-    ~Thread();
-    void SetWork(std::function<void(void*, int)> fn, void *argp, int argi);
-    void Join();
-
-private:
-    void ThreadFn();
-
-    std::thread thread;
-    std::mutex mutex;
-    std::condition_variable cv;
-    volatile bool work_available;
-    volatile bool exit;
-    std::function<void(void*, int)> work_fn;
-    void* argp;
-    int argi;
-
-    Thread(const Thread&) = delete;
-    Thread& operator=(const Thread&) = delete;
+	virtual size_t Read(uint8_t* buffer, size_t length) = 0;
+	virtual bool Complete() const noexcept = 0;
 };
 
-}
+} // Radyx
 
-#endif // RADYX_THREAD_H
+#endif

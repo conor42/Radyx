@@ -75,7 +75,7 @@ _T("\0exe\0dll\0ocx\0vbx\0sfx\0sys\0awx\0com\0out\0");
 
 #ifdef _WIN32
 
-ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_none)
+bool ArchiveCompressor::FileReader::Open(const FileInfo& fi, bool share_deny_none)
 {
 	std::array<_TCHAR, MAX_PATH> path;
 	const _TCHAR* p = path.data();
@@ -98,11 +98,17 @@ ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_no
 		OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL,
 		NULL);
+	return IsValid();
 }
 
-ArchiveCompressor::FileReader::~FileReader()
+bool ArchiveCompressor::FileReader::IsValid() const
 {
-	if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
+	return handle != INVALID_HANDLE_VALUE;
+}
+
+bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read)
+{
+	return ReadFile(handle, buffer, byte_count, &bytes_read, NULL) != 0;
 }
 
 void ArchiveCompressor::FileReader::GetAttributes(FileInfo& fi, bool get_creation_time)
@@ -120,7 +126,17 @@ void ArchiveCompressor::FileReader::GetAttributes(FileInfo& fi, bool get_creatio
 	}
 }
 
+void ArchiveCompressor::FileReader::Close()
+{
+	if (handle != INVALID_HANDLE_VALUE) {
+		CloseHandle(handle);
+		handle = INVALID_HANDLE_VALUE;
+	}
+}
+
 #else
+
+#include <unistd.h>
 
 ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_none)
 	: fd(-1)
@@ -131,16 +147,26 @@ ArchiveCompressor::FileReader::FileReader(const FileInfo& fi, bool share_deny_no
 		offs += fi.name.copy(&path[offs], path.size() - 1 - offs);
 		path[offs] = '\0';
 		fd = open(path.data(), O_RDONLY | O_NOATIME);
-		if(fd < 0 && O_NOATIME) {
+		if (fd < 0 && O_NOATIME) {
 			fd = open(path.data(), O_RDONLY);
 		}
 	}
 }
 
-ArchiveCompressor::FileReader::~FileReader()
+bool ArchiveCompressor::FileReader::IsValid() const
 {
-	if (fd >= 0) {
-		close(fd);
+	return fd >= 0;
+}
+
+bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read)
+{
+	ssize_t nread = read(fd, buffer, byte_count);
+	if (nread < 0) {
+		return false;
+	}
+	else {
+		bytes_read = static_cast<unsigned long>(nread);
+		return true;
 	}
 }
 
@@ -155,12 +181,19 @@ void ArchiveCompressor::FileReader::GetAttributes(FileInfo& fi, bool get_creatio
 	}
 }
 
+void ArchiveCompressor::FileReader::Close()
+{
+	if (fd >= 0) {
+		close(fd);
+		fd = -1;
+	}
+}
+
 #endif // _WIN32
 
-ArchiveCompressor::ArchiveCompressor()
-	: initial_total_bytes(0)
+ArchiveCompressor::FileReader::~FileReader()
 {
-	assert(GetExtensionIndex(_T("out")) != 0);
+	Close();
 }
 
 void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size)
@@ -177,132 +210,91 @@ void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size
 	initial_total_bytes += size;
 }
 
-static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const ArchiveCompressor::FileInfo& second)
-{
-	if (first.ext_index != second.ext_index) {
-		return first.ext_index < second.ext_index;
-	}
-	ptrdiff_t comp = first.name.FsCompare(first.ext, std::string::npos, second.name, second.ext, std::string::npos);
-	if (comp == 0) {
-		return first.name.FsCompare(second.name) < 0;
-	}
-	return comp < 0;
+size_t ArchiveCompressor::FinalizeUnit(std::list<CoderInfo>& coder_info, OutputFile& out_stream) {
+	unit.pack_size = out_stream.tellp() - unit.out_file_pos;
+	// Add the unit
+	unit_list.push_back(unit);
+	auto& u = unit_list.back();
+	u.coder_info = coder_info;
+	unit.Reset();
+	return u.pack_size;
 }
 
-uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
-	const RadyxOptions& options,
-	OutputStream& out_stream)
+size_t ArchiveCompressor::Read(uint8_t* buffer, size_t length)
 {
-	if (file_list.size() == 0) {
-		return 0;
-	}
-	EliminateDuplicates();
-	if (options.store_full_paths) {
-		for (auto& fs : file_list) {
-			fs.root = 0;
-		}
-	}
-	else {
-		DetectCollisions();
-	}
-	// Sort the file list by extension index then name
-	file_list.sort(CompareFileInfo);
-	auto it = file_list.begin();
-	DataUnit unit;
-	unit.out_file_pos = out_stream.tellp();
-	uint_least64_t packed_size = 0;
-	std::Tcerr << Strings::kFound_ << file_list.size();
-	std::Tcerr << (file_list.size() > 1 ? Strings::k_files : Strings::k_file) << std::endl;
-	unsigned exe_group = GetExtensionIndex(_T("exe"));
-	if (options.bcj_filter && it->ext_index >= exe_group) {
-		// Enable BCJ if starting with executables
-		unit_comp.Begin(true);
-	}
-	Progress progress(initial_total_bytes);
-	while (!g_break) {
-		unsigned ext_index = it->ext_index;
-		if(!AddFile(*it,
-			unit_comp,
-			options,
-			progress,
-			out_stream))
-		{
-			auto old_it = it;
-			++it;
-			//Delete it from the file list if not read
-			file_list.erase(old_it);
-		}
-		else {
-			// Only added to the unit if not empty
-			if (it->size != 0) {
-				unit.unpack_size += it->size;
-				if (unit.file_count == 0) {
-					unit.in_file_first = it;
+	size_t read_length = 0;
+	while (!g_break && length > 0 && cur_file != file_list.end()) {
+		if (reader.IsValid()) {
+			unsigned long read_count = 0;
+			if (AddFile(buffer + read_length, length, read_count)) {
+				length -= read_count;
+				read_length += read_count;
+				if (read_count < length) {
+					reader.Close();
+					// Adjust the total bytes to add if the size was different from when it was opened
+					if (cur_file->size != initial_size) {
+						progress.Adjust(cur_file->size - initial_size);
+					}
+					// Only added to the unit if not empty
+					if (cur_file->size != 0) {
+						unit.unpack_size += cur_file->size;
+						++unit.file_count;
+						unit.in_file_last = cur_file;
+					}
+					++cur_file;
 				}
-				++unit.file_count;
-				unit.in_file_last = it;
 			}
-			++it;
-		}
-		if (g_break) {
-			break;
-		}
-		// Criteria for ending the solid unit and maybe starting a new one
-		if (unit.unpack_size >= options.solid_unit_size
-			|| unit.file_count >= options.solid_file_count
-			|| it == file_list.end()
-			|| (options.bcj_filter && ext_index < exe_group && it->ext_index >= exe_group)
-			|| (options.solid_by_extension && ext_index != it->ext_index))
-		{
-			// If any data was added, compress what remains and add the unit to the list
-			if (unit.unpack_size != 0) {
-				progress.Show();
-				unit_comp.Compress(out_stream, &progress);
-				unit.used_bcj = unit_comp.UsedBcj();
-				if (unit.used_bcj) {
-					unit.bcj_info = unit_comp.GetBcjCoderInfo();
+			else {
+				// Read failure
+				reader.Close();
+				if (cur_file->size) {
+					// Can't recover if some of the file was compressed to the output
+					throw IoException(Strings::kUnrecoverableErrorReading, cur_file->name.c_str());
 				}
-				// Wait for thread
-				unit_comp.WaitCompletion();
-				unit.coder_info = unit_comp.GetCoderInfo();
-				// Update total packed size
-				packed_size += unit_comp.Finalize(out_stream);
-				packed_size += unit_comp.GetPackSize();
-				// Get final file position and the unit packed size
-				uint_least64_t out_file_pos = out_stream.tellp();
-				unit.pack_size = out_file_pos - unit.out_file_pos;
-				// Add the unit
-				unit_list.push_back(unit);
-				// Starting pos for the next unit
-				unit.out_file_pos = out_file_pos;
-			}
-			if (it == file_list.end()) {
-				break;
-			}
-			// Reset the unit compressor, turning on BCJ if adding executables
-			unit_comp.Begin(options.bcj_filter && it->ext_index >= exe_group);
-			unit.file_count = 0;
-			unit.unpack_size = 0;
-		}
-	}
-	unit_comp.WaitCompletion();
-	progress.Erase();
-	unit_comp.CheckError();
-	// Warn if any files couldn't be read
-	if (!g_break && !file_warnings.empty()) {
-		if (!options.quiet_mode && !file_list.empty()) {
-			std::Tcerr << std::endl << Strings::kWarningsForFiles << std::endl;
-			for (auto& msg : file_warnings) {
-				std::Tcerr << msg << std::endl;
+				const _TCHAR* os_msg = IoException::GetOsMessage();
+				std::unique_lock<std::mutex> lock(progress.GetMutex());
+				progress.RewindLocked();
+				file_warnings.emplace_back(Strings::kCannotRead_ + cur_file->dir + cur_file->name + _T(" : ") + os_msg);
+				std::Tcerr << file_warnings.back() << std::endl;
+				// Adjust the total bytes to add
+				progress.Adjust(-static_cast<int_least64_t>(initial_size));
 			}
 		}
-		std::Tcerr << std::endl
-			<< Strings::kWarningCouldntOpen_
-			<< file_warnings.size()
-			<< (file_warnings.size() > 1 ? Strings::k_files : Strings::k_file)
-			<< std::endl;
+		if (!reader.IsValid()) {
+			if(unit.unpack_size >= options.solid_unit_size
+				|| unit.file_count >= options.solid_file_count
+				|| cur_file == file_list.end()
+				|| (options.bcj_filter && ext_index < exe_group && cur_file->ext_index >= exe_group)
+				|| (options.solid_by_extension && ext_index != cur_file->ext_index))
+			{
+				return read_length;
+			}
+			initial_size = cur_file->size;
+			ext_index = cur_file->ext_index;
+			if (!reader.Open(*cur_file, options.share_deny_none)) {
+				const _TCHAR* os_msg = IoException::GetOsMessage();
+				std::unique_lock<std::mutex> lock(progress.GetMutex());
+				progress.RewindLocked();
+				file_warnings.emplace_back(Strings::kCannotOpen_ + cur_file->dir + cur_file->name + _T(" : ") + os_msg);
+				std::Tcerr << file_warnings.back() << std::endl;
+				progress.Adjust(-static_cast<int_least64_t>(initial_size));
+				continue;
+			}
+			reader.GetAttributes(*cur_file, options.store_creation_time);
+			// Size may have changed if open for writing
+			if (cur_file->size != initial_size) {
+				progress.Adjust(cur_file->size - initial_size);
+				initial_size = cur_file->size;
+			}
+			if (!options.quiet_mode) {
+				std::unique_lock<std::mutex> lock(progress.GetMutex());
+				progress.RewindLocked();
+				std::Tcerr << Strings::kAdding_ << (cur_file->dir.c_str() + cur_file->root) << cur_file->name.c_str() << std::endl;
+			}
+			cur_file->size = 0;
+		}
 	}
-	return packed_size;
+	return read_length;
 }
 
 void ArchiveCompressor::EliminateDuplicates()
@@ -360,78 +352,70 @@ void ArchiveCompressor::DetectCollisions()
 	}
 }
 
-bool ArchiveCompressor::AddFile(FileInfo& fi,
-	UnitCompressor& unit_comp,
-	const RadyxOptions& options,
-	Progress& progress,
-	OutputStream& out_stream)
+bool ArchiveCompressor::AddFile(uint8_t* buffer,
+	size_t length,
+	unsigned long& read_count)
 {
-	uint_least64_t initial_size = fi.size;
-	FileReader reader(fi, options.share_deny_none);
-	if (!reader.IsValid()) {
-		const _TCHAR* os_msg = IoException::GetOsMessage();
-		std::unique_lock<std::mutex> lock(progress.GetMutex());
-		progress.RewindLocked();
-		file_warnings.emplace_back(Strings::kCannotOpen_ + fi.dir + fi.name + _T(" : ") + os_msg);
-		std::Tcerr << file_warnings.back() << std::endl;
-		progress.Adjust(-static_cast<int_least64_t>(initial_size));
+	unsigned long to_read = static_cast<unsigned long>(
+		std::min<size_t>(length, ~0ul));
+	read_count = 0;
+	if (!reader.Read(buffer, to_read, read_count)) {
 		return false;
 	}
-	reader.GetAttributes(fi, options.store_creation_time);
-	// Size may have changed if open for writing
-	if (fi.size != initial_size) {
-		progress.Adjust(fi.size - initial_size);
-		initial_size = fi.size;
-	}
-	if (!options.quiet_mode) {
-		std::unique_lock<std::mutex> lock(progress.GetMutex());
-		progress.RewindLocked();
-		std::Tcerr << Strings::kAdding_ << (fi.dir.c_str() + fi.root) << fi.name.c_str() << std::endl;
-	}
-	fi.size = 0;
-	bool did_compress = false;
-	while (!g_break) {
-		if (unit_comp.GetAvailableSpace() == 0) {
-			// Unit compressor is full so compress
-			progress.Show();
-			unit_comp.Compress(out_stream, &progress);
-			unit_comp.Shift();
-			did_compress = true;
-		}
-		unsigned long to_read = static_cast<unsigned long>(
-			std::min<size_t>(unit_comp.GetAvailableSpace(), ~0ul));
-		unsigned long read_count;
-		if (!reader.Read(unit_comp.GetAvailableBuffer(), to_read, read_count)) {
-			// Read failure
-			if (did_compress) {
-				// Can't recover if some of the file was compressed to the output
-				throw IoException(Strings::kUnrecoverableErrorReading, fi.name.c_str());
-			}
-			const _TCHAR* os_msg = IoException::GetOsMessage();
-			std::unique_lock<std::mutex> lock(progress.GetMutex());
-			progress.RewindLocked();
-			file_warnings.emplace_back(Strings::kCannotRead_ + fi.dir + fi.name + _T(" : ") + os_msg);
-			std::Tcerr << file_warnings.back() << std::endl;
-			// Delete the data from the unit compressor's buffer
-			unit_comp.RemoveByteCount(static_cast<size_t>(fi.size));
-			// Adjust the total bytes to add
-			progress.Adjust(-static_cast<int_least64_t>(initial_size));
-			return false;
-		}
-		if (read_count == 0) {
-			break;
-		}
-		// Update the CRC
-		fi.crc32.Add(unit_comp.GetAvailableBuffer(), read_count);
-		// Update file size and the unit compressor's buffer pos
-		fi.size += read_count;
-		unit_comp.AddByteCount(read_count);
-	}
-	// Adjust the total bytes to add if the size was different from when it was opened
-	if (fi.size != initial_size) {
-		progress.Adjust(fi.size - initial_size);
-	}
+	// Update the CRC
+	cur_file->crc32.Add(buffer, read_count);
+	// Update file size
+	cur_file->size += read_count;
 	return true;
+}
+
+ArchiveCompressor::ArchiveCompressor(const RadyxOptions& options_, Progress& progress_)
+	: options(options_),
+	progress(progress_),
+	initial_size(0),
+	initial_total_bytes(0),
+	exe_group(GetExtensionIndex(_T("exe"))),
+	ext_index(~0UL)
+{
+}
+
+void ArchiveCompressor::InitUnit(OutputFile& out_stream)
+{
+	unit.in_file_first = cur_file;
+	if (unit_list.size() > 0) {
+		unit.out_file_pos = unit_list.back().out_file_pos + unit_list.back().pack_size;
+	}
+	else {
+		unit.out_file_pos = out_stream.tellp();
+	}
+}
+
+static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const ArchiveCompressor::FileInfo& second)
+{
+	if (first.ext_index != second.ext_index) {
+		return first.ext_index < second.ext_index;
+	}
+	ptrdiff_t comp = first.name.FsCompare(first.ext, std::string::npos, second.name, second.ext, std::string::npos);
+	if (comp == 0) {
+		return first.name.FsCompare(second.name) < 0;
+	}
+	return comp < 0;
+}
+
+void ArchiveCompressor::PrepareList()
+{
+	EliminateDuplicates();
+	if (options.store_full_paths) {
+		for (auto& fs : file_list) {
+			fs.root = 0;
+		}
+	}
+	else {
+		DetectCollisions();
+	}
+	// Sort the file list by extension index then name
+	file_list.sort(CompareFileInfo);
+	cur_file = file_list.begin();
 }
 
 // Get the index of this extension in the list
@@ -470,4 +454,4 @@ size_t ArchiveCompressor::GetNameLengthTotal() const
 	return total;
 }
 
-}
+} // Radyx

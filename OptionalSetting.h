@@ -33,11 +33,21 @@ class OptionalSetting
 public:
 	OptionalSetting(T value_) : value(value_), is_set(false) {}
 	void operator=(const OptionalSetting<T>& right);
-	void operator=(T value_) { Set(value_); }
+	void operator=(T value_) {
+		Set(value_);
+	}
 	inline void Set(T value_);
-	inline T Get() const { return value; }
-	bool IsSet() const { return is_set; }
-	operator T() const { return value; }
+
+	inline T Get() const {
+		return value;
+	}
+	bool IsSet() const {
+		return is_set;
+	}
+	operator T() const {
+		return value;
+	}
+
 private:
 	T value;
 	bool is_set;

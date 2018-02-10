@@ -63,6 +63,8 @@ private:
 
 	DirScanner(const DirScanner&) = delete;
 	DirScanner& operator=(const DirScanner&) = delete;
+	DirScanner(DirScanner&&) = delete;
+	DirScanner& operator=(DirScanner&&) = delete;
 };
 
 #ifdef _WIN32

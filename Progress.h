@@ -37,6 +37,7 @@ class Progress
 public:
 	Progress(uint_least64_t total_bytes_);
 	~Progress();
+	void Init(uint_least64_t total_bytes_, unsigned encode_weight_);
 	inline void Show();
 	inline void Rewind();
 	void RewindLocked();
@@ -56,11 +57,17 @@ private:
 
 	Progress(const Progress&) = delete;
 	Progress& operator=(const Progress&) = delete;
+	Progress(Progress&&) = delete;
+	Progress& operator=(Progress&&) = delete;
 };
 
 void Progress::Adjust(int_least64_t size_change)
 {
 	total_bytes += size_change;
+}
+
+std::mutex& Progress::GetMutex() {
+	return mtx;
 }
 
 void Progress::Show()

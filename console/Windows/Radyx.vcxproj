@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ArchiveCompressor.h" />
+    <ClInclude Include="..\..\ArchiveStreamIn.h" />
     <ClInclude Include="..\..\BcjTransform.h" />
     <ClInclude Include="..\..\BcjX86.h" />
     <ClInclude Include="..\..\CharType.h" />
@@ -53,6 +54,7 @@
     <ClInclude Include="..\..\fast-lzma2\threading.h" />
     <ClInclude Include="..\..\fast-lzma2\util.h" />
     <ClInclude Include="..\..\fast-lzma2\xxhash.h" />
+    <ClInclude Include="..\..\InPlaceFilter.h" />
     <ClInclude Include="..\..\IoException.h" />
     <ClInclude Include="..\..\Lzma2Options.h" />
     <ClInclude Include="..\..\OptionalSetting.h" />
@@ -163,7 +165,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>

@@ -26,6 +26,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#include "ArchiveCompressor.h"
 #include "BcjX86.h"
 
 namespace Radyx {
@@ -33,23 +34,51 @@ namespace Radyx {
 const bool BcjX86::kMaskToAllowedStatus[8] = { 1, 1, 1, 0, 1, 0, 0, 0 };
 const uint8_t BcjX86::kMaskToBitNumber[8] = { 0, 1, 2, 2, 3, 3, 3, 3 };
 
-BcjX86::BcjX86()
-	: ip(0),
-	prev_mask(0)
+BcjX86::BcjX86(ArchiveCompressor* files_) noexcept
+	: files(files_),
+	ip(0),
+	prev_mask(0),
+	overrun(0),
+	did_encode(false)
 {
 }
 
-size_t BcjX86::Transform(MutableDataBlock& block, bool encoding)
+size_t BcjX86::GetMaxOverrun() const noexcept
 {
-	size_t index = block.start;
+	return 4;
+}
+
+size_t BcjX86::Encode(uint8_t* buffer, size_t main_end, size_t block_end)
+{
+	if (files && !files->IsExeUnit())
+		return block_end;
+	did_encode = true;
+	return Transform(buffer, main_end, block_end, true);
+}
+
+size_t BcjX86::Decode(uint8_t* buffer, size_t main_end, size_t block_end)
+{
+	return Transform(buffer, main_end, block_end, false);
+}
+
+// block_end >= main_end
+// The main encoder will stop at main_end
+// block_end > main_end if source not at eof
+// At the next call, buffer will point to data at main_end
+size_t BcjX86::Transform(uint8_t* buffer, size_t main_end, size_t block_end, bool encoding)
+{
+	assert(block_end >= main_end);
+	size_t index = overrun;
+	if (index > block_end) {
+		throw std::runtime_error("BcjX86 underrun");
+	}
 	size_t offset_ip = ip + 5 - index;
 	size_t prev_index = index - 1;
-	uint8_t* data_block = block.data;
-	size_t end = block.end;
-	size_t limit = end - 4;
+	uint8_t* const data_block = buffer;
+	size_t limit = block_end - 4;
 	for (;;)
 	{
-		for (; index < end; ++index) {
+		for (; index < block_end; ++index) {
 			if ((data_block[index] & 0xFE) == 0xE8) {
 				break;
 			}
@@ -111,16 +140,24 @@ size_t BcjX86::Transform(MutableDataBlock& block, bool encoding)
 	}
 	ip = offset_ip - 5 + index;
 	prev_mask = ((prev_index > 3) ? 0 : ((prev_mask << (prev_index - 1)) & 0x7));
+	overrun = index - main_end;
 	return index;
 }
 
-void BcjX86::Reset()
+void BcjX86::Reset() noexcept
 {
 	ip = 0;
 	prev_mask = 0;
+	overrun = 0;
+	did_encode = false;
 }
 
-CoderInfo BcjX86::GetCoderInfo() const
+bool BcjX86::DidEncode() const noexcept
+{
+	return did_encode;
+}
+
+CoderInfo BcjX86::GetCoderInfo() const noexcept
 {
 	return CoderInfo(nullptr, 0, 0x03030103, 1, 1);
 }

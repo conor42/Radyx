@@ -30,7 +30,7 @@ namespace Radyx {
 Crc32::init_ Crc32::initializer_;
 uint_fast32_t Crc32::crc_table[256];
 
-void Crc32::InitCrcTable()
+void Crc32::InitCrcTable() noexcept
 {
 	for (uint_fast32_t i = 0; i < 256; ++i)
 	{

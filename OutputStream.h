@@ -1,9 +1,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Class: Thread
-//        Simple worker thread class to eliminate extra thread creation overhead
+// Class: OutputStream
+//        Interface for file writing
 //
-// Copyright 2015-present Conor McCarthy
+// Copyright 2017 Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -22,40 +22,21 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef RADYX_THREAD_H
-#define RADYX_THREAD_H
+#ifndef RADYX_OUTPUT_STREAM_H
+#define RADYX_OUTPUT_STREAM_H
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
+#include "common.h"
 
-namespace Radyx {
-
-class Thread
+class OutputStream
 {
 public:
-    Thread();
-    ~Thread();
-    void SetWork(std::function<void(void*, int)> fn, void *argp, int argi);
-    void Join();
 
-private:
-    void ThreadFn();
-
-    std::thread thread;
-    std::mutex mutex;
-    std::condition_variable cv;
-    volatile bool work_available;
-    volatile bool exit;
-    std::function<void(void*, int)> work_fn;
-    void* argp;
-    int argi;
-
-    Thread(const Thread&) = delete;
-    Thread& operator=(const Thread&) = delete;
+	virtual OutputStream& Put(char c) = 0;
+	virtual OutputStream& Write(const void* s, size_t n) = 0;
+	virtual void Flush() = 0;
+	virtual void DisableExceptions() = 0;
+	virtual void RestoreExceptions() = 0;
+	virtual bool Fail() const noexcept = 0;
 };
 
-}
-
-#endif // RADYX_THREAD_H
+#endif

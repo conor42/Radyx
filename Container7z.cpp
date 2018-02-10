@@ -88,16 +88,10 @@ void Container7z::Writer::WriteName(const FsString& name, size_t root)
 
 void Container7z::Writer::Flush()
 {
-	if (compress) {
-		unit_comp.Compress(out_stream, nullptr);
-		unit_comp.Shift();
-	}
-	else {
-		unit_comp.Write(out_stream);
-	}
+	out_stream.Flush();
 }
 
-void Container7z::ReserveSignatureHeader(OutputStream& out_stream)
+void Container7z::ReserveSignatureHeader(OutputFile& out_stream)
 {
 	std::array<char, 32> buf;
 	buf.fill(0);
@@ -110,21 +104,21 @@ void Container7z::ReserveSignatureHeader(OutputStream& out_stream)
 void Container7z::WriteSignatureHeader(uint_least64_t header_offset,
 	uint_least64_t header_size,
 	uint_fast32_t header_crc32,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	out_stream.seekp(0);
 	out_stream.write(kSignature, sizeof(kSignature));
 	std::array<uint8_t, kSignatureHeaderSize - 8> buf;
 	buf[0] = kMajorVersion;
 	buf[1] = kMinorVersion;
-	out_stream.write(reinterpret_cast<char*>(buf.data()), 2);
+	out_stream.write(buf.data(), 2);
 	WriteUint64(header_offset, &buf[4]);
 	WriteUint64(header_size, &buf[12]);
 	WriteUint32(header_crc32, &buf[20]);
 	Crc32 crc32;
 	crc32.Add(&buf[4], 20);
 	WriteUint32(crc32, buf.data());
-	out_stream.write(reinterpret_cast<char*>(buf.data()), buf.size());
+	out_stream.write(buf.data(), buf.size());
 }
 
 void Container7z::WritePackInfo(const ArchiveCompressor& arch_comp, uint_least64_t file_pos, Writer& writer)
@@ -152,20 +146,23 @@ void Container7z::WriteUnpackInfo(const ArchiveCompressor& arch_comp, Writer& wr
 	writer.WriteCompressedUint64(arch_comp.GetUnitList().size());
 	writer.WriteByte(0);
 	for (auto& it : arch_comp.GetUnitList()) {
-		writer.WriteCompressedUint64(1 + it.used_bcj);
-		WriteUnitInfo(it.coder_info, writer);
-		if (it.used_bcj) {
-			WriteUnitInfo(it.bcj_info, writer);
-			// Bind pair for encoder to BCJ
-			writer.WriteCompressedUint64(1);
-			writer.WriteCompressedUint64(0);
+		if (it.coder_info.empty() && it.unpack_size) {
+			throw std::runtime_error("Coder info");
+		}
+		writer.WriteCompressedUint64(it.coder_info.size());
+		for (auto& inf : it.coder_info) {
+			WriteUnitInfo(inf, writer);
+		}
+		for (size_t n = 1; n < it.coder_info.size(); ++n) {
+			// Bind pair
+			writer.WriteCompressedUint64(n);
+			writer.WriteCompressedUint64(n - 1);
 		}
 	}
 	writer.WriteByte(kCodersUnpackSize);
 	for (auto& it : arch_comp.GetUnitList()) {
-		writer.WriteCompressedUint64(it.unpack_size);
-		if (it.used_bcj) {
-			// Size is unchanged after BCJ
+		for (auto inf = it.coder_info.cbegin(); inf != it.coder_info.cend(); ++inf) {
+			// Currently all in-place filters cannot change unpack size
 			writer.WriteCompressedUint64(it.unpack_size);
 		}
 	}
@@ -263,8 +260,8 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 			header_unpack_size,
             coder_info,
 			out_stream);
-		WriteSignatureHeader(header_header_offset, unit_comp.GetUnpackSize(), crc32, out_stream);
-		packed_size += unit_comp.GetPackSize() + kSignatureHeaderSize;
+		WriteSignatureHeader(header_header_offset, out_stream.tellp() - (header_header_offset + 32), crc32, out_stream);
+		packed_size += encoder.GetPackSize() + kSignatureHeaderSize;
 	}
 	catch (std::ios_base::failure&) {
 		if (!g_break) {
@@ -275,10 +272,9 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 }
 
 void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
-	UnitCompressor& unit_comp,
 	OutputStream& out_stream)
 {
-	Writer writer(unit_comp, out_stream, true);
+	Writer writer(out_stream);
 	writer.WriteByte(kHeader);
 	// Archive properties
 	if (arch_comp.GetUnitList().size() != 0) {
@@ -325,7 +321,7 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 		}
 	}
 	// std::mem_fn is technically unnecessary but there's a bug in VS2013
-	std::function<void(Writer&, uint_least64_t)> time_writer = std::mem_fn(&Writer::WriteUint64);
+	std::function<void(Container7z::Writer&, uint_least64_t)> time_writer = std::mem_fn(&Writer::WriteUint64);
 	WriteOptionalAttribute(arch_comp, file_count, kCTime, kFileTimeItemSize,
 		[](std::list<ArchiveCompressor::FileInfo>::const_reference it) {
 			return it.creat_time; },
@@ -347,14 +343,13 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 }
 
 // Write an uncompressed header for the compressed header
-uint_fast32_t Container7z::WriteHeaderHeader(UnitCompressor& unit_comp,
-	uint_least64_t header_offset,
+uint_fast32_t Container7z::WriteHeaderHeader(uint_least64_t header_offset,
 	uint_least64_t header_pack_size,
 	uint_least64_t header_unpack_size,
-    CoderInfo& coder_info,
-    OutputStream& out_stream)
+	CoderInfo& coder_info,
+	OutputFile& out_stream)
 {
-	Writer writer(unit_comp, out_stream, false);
+	Writer writer(out_stream);
 	writer.WriteCompressedUint64(kEncodedHeader);
 	writer.WriteByte(kPackInfo);
 	writer.WriteCompressedUint64(header_offset);

@@ -24,24 +24,30 @@
 #ifndef RADYX_COMMON_H_
 #define RADYX_COMMON_H_
 
+#define RADYX_BCJ
+#define UI_EXCEPTIONS
+
 #include <cstddef>
 #include <cinttypes>
 #include <thread>
 #include <cassert>
+#include <algorithm>
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
 #define noexcept
 #endif
 
-extern volatile bool g_break;
-
 namespace Radyx {
+
+extern volatile bool g_break;
 
 #ifdef USE_64BIT_FAST_INT
 typedef uint_fast64_t UintFast32;
 #else
 typedef uint_least32_t UintFast32;
 #endif
+
+const size_t kBoundaryMask = ~(size_t(7));
 
 #if defined(RADYX_STATS) && defined(InterlockedAdd64)
 

@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+ ///////////////////////////////////////////////////////////////////////////////
 //
 // Class: UnitCompressor
 //        Management of solid data units and data block overlap
@@ -22,13 +22,15 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
 #include <cstring>
 #include "common.h"
 #include "UnitCompressor.h"
+#include "fast-lzma2/fl2_errors.h"
+
+#ifdef UI_EXCEPTIONS
 #include "IoException.h"
 #include "Strings.h"
-#include "fast-lzma2/fl2_errors.h"
+#endif
 
 namespace Radyx {
 
@@ -40,7 +42,23 @@ static unsigned ValueToLog(size_t value, unsigned min_bits)
     return bits;
 }
 
-UnitCompressor::UnitCompressor(RadyxOptions& options, bool do_bcj)
+#ifdef UI_EXCEPTIONS
+
+inline void throw_write_exception(int os_error)
+{
+	throw IoException(Strings::kCannotWriteArchive, os_error, _T(""));
+}
+
+#else
+
+inline void throw_write_exception(int /*os_error*/)
+{
+	throw std::ios_base::failure("");
+}
+
+#endif
+
+UnitCompressor::UnitCompressor(RadyxOptions& options, size_t read_extra)
 	: dictionary_size(0),
 	unprocessed(0),
 	buffer_index(0),
@@ -84,11 +102,11 @@ UnitCompressor::UnitCompressor(RadyxOptions& options, bool do_bcj)
     FL2_CCtx_setParameter(cctx, FL2_p_posBits, options.lzma2.pb);
     FL2_CCtx_setParameter(cctx, FL2_p_omitProperties, 1);
     FL2_CCtx_setParameter(cctx, FL2_p_doXXHash, 0);
-    data_buffer[0].reset(new uint8_t[dictionary_size]);
+    data_buffers[0].reset(dictionary_size, read_extra);
 	if (async_read) {
-		data_buffer[1].reset(new uint8_t[dictionary_size]);
+		data_buffers[1].reset(dictionary_size, read_extra);
 	}
-    Begin(do_bcj, async_read);
+    Begin(async_read);
 }
 
 UnitCompressor::~UnitCompressor()
@@ -96,30 +114,18 @@ UnitCompressor::~UnitCompressor()
 	FL2_freeCCtx(cctx);
 }
 
-void UnitCompressor::Begin(bool do_bcj)
+void UnitCompressor::Begin()
 {
-    Begin(do_bcj, async_read);
+    Begin(async_read);
 }
 
-void UnitCompressor::Begin(bool do_bcj, bool async_read_)
+void UnitCompressor::Begin(bool async_read_)
 {
 	CheckError();
 	WaitCompletion();
-	block_start = 0;
-	block_end = 0;
 	unpack_size = 0;
 	pack_size = 0;
-	unprocessed = 0;
-	if (do_bcj) {
-		if (bcj.get() == nullptr) {
-			bcj.reset(new BcjX86);
-		}
-		else {
-			bcj->Reset();
-		}
-	}
-	else bcj.reset(nullptr);
-	async_read = async_read_ && data_buffer[1].get() != nullptr;
+	async_read = async_read_ && data_buffers[1];
 	buffer_index = 0;
     FL2_beginFrame(cctx);
 }
@@ -161,7 +167,7 @@ int FL2LIB_CALL UnitCompressor::WriterFn(const void* src, size_t srcSize, void* 
 {
     ThreadArgs* args = reinterpret_cast<ThreadArgs*>(opaque);
     try {
-        args->out_stream->write(reinterpret_cast<const char*>(src), srcSize);
+        args->out_stream->Write(src, srcSize);
     }
     catch (std::exception&) {
         return 1;
@@ -181,7 +187,7 @@ int FL2LIB_CALL UnitCompressor::ProgressFn(size_t done, void* opaque)
     return 0;
 }
 
-void UnitCompressor::ThreadFn(void* pwork, int)
+void UnitCompressor::ThreadFn(void* pwork, int /*unused*/)
 {
 	UnitCompressor* unit_comp = reinterpret_cast<UnitCompressor*>(pwork);
     unit_comp->CompressTranslateError();
@@ -197,32 +203,73 @@ void UnitCompressor::CheckError() const
 		throw std::bad_alloc();
 	}
 	else if (error_code.type == ErrorCode::kWrite) {
-		throw IoException(Strings::kCannotWriteArchive, error_code.os_code, _T(""));
+		throw_write_exception(error_code.os_code);
 	}
 	else {
 		throw std::exception();
 	}
 }
 
-void UnitCompressor::Compress(OutputStream& out_stream,
+void UnitCompressor::Compress(ArchiveStreamIn* in_stream,
+	OutputStream& out_stream,
+	FilterList* filters,
+	std::list<CoderInfo>& coder_info,
+	Progress* progress)
+{
+	pack_size = 0;
+	while (!g_break)
+	{
+		size_t in_size = Read(in_stream);
+
+		if (Unprocessed()) {
+			Compress(filters, out_stream, progress);
+			if (IsFull()) {
+				Shift();
+			}
+			else {
+				WaitCompletion();
+				pack_size = GetPackSize() + Finalize(out_stream);
+				break;
+			}
+		}
+	}
+	coder_info.clear();
+	for (auto& f : *filters) {
+		if (f->DidEncode()) {
+			coder_info.push_front(f->GetCoderInfo());
+		}
+		f->Reset();
+	}
+	coder_info.push_front(GetCoderInfo());
+}
+
+void UnitCompressor::Write(const void* data,
+	size_t count,
+	OutputStream& out_stream)
+{
+	const char* src = reinterpret_cast<const char*>(data);
+	while (count && !g_break) {
+		size_t to_write = std::min(count, data_buffers[buffer_index].GetAvailableSpace());
+		data_buffers[buffer_index].Write(src, to_write);
+		if (to_write < count) {
+			Compress(nullptr, out_stream, nullptr);
+			Shift();
+		}
+		src += to_write;
+		count -= to_write;
+	}
+}
+
+void UnitCompressor::Compress(FilterList* filters,
+	OutputStream& out_stream,
 	Progress* progress)
 {
 	CheckError();
-	if (block_end > block_start - unprocessed)
+	if (data_buffers[buffer_index].Unprocessed())
 	{
-		size_t processed_end = block_end;
-		MutableDataBlock mut_block(data_buffer[buffer_index].get(), block_start - unprocessed, block_end);
-		if (bcj.get() != nullptr) {
-			processed_end = bcj->Transform(mut_block, true);
-			// If the buffer is not full, there is no more data for this unit so
-			// process it to the end.
-			if (block_end < dictionary_size) {
-				processed_end = block_end;
-			}
-			unprocessed = block_end - processed_end;
-		}
-        WaitCompletion();
-        FL2_blockBuffer block = { data_buffer[buffer_index].get(), mut_block.start, processed_end, dictionary_size };
+		DataBlock data_block = data_buffers[buffer_index].RunFilters(filters);
+		WaitCompletion();
+        FL2_blockBuffer block = { data_buffers[buffer_index].get(), data_block.start, data_block.end, dictionary_size };
         args = ThreadArgs(cctx,
             &out_stream,
             progress,
@@ -236,7 +283,7 @@ void UnitCompressor::Compress(OutputStream& out_stream,
             ThreadFn(this, 0);
 			CheckError();
 		}
-		unpack_size += block_end - block_start;
+		unpack_size += data_block.Length();
 	}
 }
 
@@ -244,30 +291,30 @@ void UnitCompressor::Shift()
 {
 	CheckError();
 	if (async_read) {
-		FL2_blockBuffer block = { data_buffer[buffer_index ^ 1].get(), block_start, block_end, dictionary_size };
-		FL2_shiftBlock_switch(cctx, &block, data_buffer[buffer_index].get());
+		FL2_blockBuffer block = { data_buffers[buffer_index ^ 1].get(), block_start, block_end, dictionary_size };
+		FL2_shiftBlock_switch(cctx, &block, data_buffers[buffer_index].get());
 		block_start = block.start;
 	}
 	else {
-		FL2_blockBuffer block = { data_buffer[0].get(), block_start, block_end, dictionary_size };
+		FL2_blockBuffer block = { data_buffers[0].get(), block_start, block_end, dictionary_size };
 		FL2_shiftBlock(cctx, &block);
 		block_start = block.start;
 	}
-	block_end = block_start;
 }
 
 void UnitCompressor::Write(OutputStream& out_stream)
 {
 	CheckError();
-	size_t to_write = block_end - block_start;
-	out_stream.write(reinterpret_cast<const char*>(data_buffer[buffer_index].get() + block_start), to_write);
-	if (!g_break && out_stream.fail()) {
-		throw IoException(Strings::kCannotWriteArchive, _T(""));
+	DataBlock data_block = data_buffers[buffer_index].GetAllData();
+	size_t to_write = data_block.Length();
+	out_stream.Write(data_block.data + data_block.start, to_write);
+	if (!g_break && out_stream.Fail()) {
+		error_code.LoadOsErrorCode();
+		throw_write_exception(error_code.os_code);
 	}
 	unpack_size += to_write;
 	pack_size += to_write;
-	block_start = 0;
-	block_end = 0;
+	data_buffers[buffer_index].Reset();
 }
 
 CoderInfo UnitCompressor::GetCoderInfo()

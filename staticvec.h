@@ -1,9 +1,10 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Class: Thread
-//        Simple worker thread class to eliminate extra thread creation overhead
+// Class: staticvec
+//        Partial implementation of a vector with no resize ability.
+//        Contained object type needs no copy constructor or operator=
 //
-// Copyright 2015-present Conor McCarthy
+// Copyright 2017 Conor McCarthy
 //
 // This file is part of Radyx.
 //
@@ -22,40 +23,58 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef RADYX_THREAD_H
-#define RADYX_THREAD_H
+#pragma once
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
+#include <cassert>
+#include <memory>
 
-namespace Radyx {
-
-class Thread
+template<class T>
+class staticvec
 {
 public:
-    Thread();
-    ~Thread();
-    void SetWork(std::function<void(void*, int)> fn, void *argp, int argi);
-    void Join();
+
+	staticvec()
+		: count(0)
+	{
+	}
+
+	staticvec(size_t count_)
+		: count(count_),
+		buffer(new T[count_])
+	{
+	}
+
+	size_t size() const
+	{
+		return count;
+	}
+
+	T& operator[](size_t pos)
+	{
+		assert(pos < count);
+		return buffer[pos];
+	}
+
+	const T& operator[](size_t pos) const
+	{
+		assert(pos < count);
+		return buffer[pos];
+	}
+
+	T& front()
+	{
+		assert(count > 0);
+		return buffer[0];
+	}
+
+	const T& front() const
+	{
+		assert(count > 0);
+		return buffer[0];
+	}
 
 private:
-    void ThreadFn();
-
-    std::thread thread;
-    std::mutex mutex;
-    std::condition_variable cv;
-    volatile bool work_available;
-    volatile bool exit;
-    std::function<void(void*, int)> work_fn;
-    void* argp;
-    int argi;
-
-    Thread(const Thread&) = delete;
-    Thread& operator=(const Thread&) = delete;
+	size_t count;
+	std::unique_ptr<T[]> buffer;
 };
 
-}
-
-#endif // RADYX_THREAD_H

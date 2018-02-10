@@ -54,6 +54,8 @@ build/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+*.VC.db
+*.sdf
 *_i.c
 *_p.c
 *.ilk
@@ -219,3 +221,4 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 Windows/Radyx.v12.suo
+*.db

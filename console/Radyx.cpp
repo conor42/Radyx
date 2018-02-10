@@ -34,6 +34,8 @@
 #include "../OutputFile.h"
 #include "../CharType.h"
 #include "../ArchiveCompressor.h"
+#include "../ArchiveStreamIn.h"
+#include "../Bcjx86.h"
 #include "../Container7z.h"
 #include "../RadyxOptions.h"
 #include "../IoException.h"
@@ -55,9 +57,9 @@ static const char kLicense[] = "This software has NO WARRANTY and is released un
 
 static const uint_least64_t kMinMemory = 512 * 1024 * 1024;
 
-volatile bool g_break = false;
+volatile bool Radyx::g_break = false;
 
-void RADYX_CDECL SignalHandler(int)
+void RADYX_CDECL SignalHandler(int /*param*/)
 {
 	g_break = true;
 }
@@ -105,6 +107,62 @@ bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, Out
 	return !is_dev_null;
 }
 
+int CompressFiles(Path& archive_path, RadyxOptions& options, bool& created_file)
+{
+	uint_least64_t avail_mem = 0;
+#ifdef _WIN32
+	MEMORYSTATUSEX msx;
+	msx.dwLength = sizeof(msx);
+	if (GlobalMemoryStatusEx(&msx) == TRUE) {
+		avail_mem = msx.ullAvailPhys;
+	}
+#endif
+	Progress progress;
+	ArchiveCompressor ar_comp(options, progress);
+	std::Tcerr << Strings::kSearching;
+	options.GetFiles(ar_comp);
+	ar_comp.PrepareList();
+	std::Tcerr << _T('\r');
+	if (g_break) {
+		return EXIT_FAILURE;
+	}
+	if (ar_comp.GetFileList().size() == 0) {
+		std::Tcerr << Strings::kNoFilesFound << std::endl;
+		return EXIT_SUCCESS;
+	}
+	FilterList filters;
+	if (options.bcj_filter) {
+		filters.emplace_back(std::unique_ptr<BcjX86>(new BcjX86(&ar_comp)));
+	}
+	size_t read_extra = 0;
+	for (auto& f : filters) {
+		read_extra = std::max(read_extra, f->GetMaxOverrun());
+	}
+	UnitCompressor unit_comp(options, read_extra);
+	avail_mem -= unit_comp.GetMemoryUsage();
+	OutputFile out_stream;
+	created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
+	Container7z::ReserveSignatureHeader(out_stream);
+	progress.Init(ar_comp.GetTotalByteCount(), encoder.GetEncodeWeight());
+	uint_least64_t packed = 0;
+	std::list<CoderInfo> coder_info;
+	while (!g_break && !ar_comp.Complete()) {
+		ar_comp.InitUnit(out_stream);
+		unit_comp.Compress(&ar_comp, &filters, coder_info, &progress);
+		packed += encoder.GetPackSize();
+		ar_comp.FinalizeUnit(coder_info, out_stream);
+}
+	if (ar_comp.GetFileCount() != 0 && !g_break) {
+		packed += Container7z::WriteDatabase(ar_comp, unit_comp, out_stream);
+		if (!created_file) {
+			std::Tcerr << "Compressed size: " << packed << " bytes" << std::endl;
+		}
+		std::Tcerr << Strings::kDone << std::endl;
+		return EXIT_SUCCESS;
+	}
+	return EXIT_FAILURE;
+}
+
 int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 {
 	signal(SIGINT, SignalHandler);
@@ -113,47 +171,7 @@ int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 	Path archive_path;
 	try {
 		RadyxOptions options(argc, argv, archive_path);
-		uint_least64_t avail_mem = 0;
-#ifdef _WIN32
-		MEMORYSTATUSEX msx;
-		msx.dwLength = sizeof(msx);
-		if (GlobalMemoryStatusEx(&msx) == TRUE) {
-			avail_mem = msx.ullAvailPhys;
-		}
-#endif
-		UnitCompressor unit_comp(options, false);
-		ArchiveCompressor ar_comp;
-		std::Tcerr << Strings::kSearching;
-		options.GetFiles(ar_comp);
-		for (size_t i = _tcslen(Strings::kSearching); i > 0; --i) {
-			std::Tcerr << '\b';
-		}
-		if (g_break) {
-			return EXIT_FAILURE;
-		}
-		if (ar_comp.GetFileList().size() == 0) {
-			std::Tcerr << Strings::kNoFilesFound << std::endl;
-			return EXIT_SUCCESS;
-		}
-		avail_mem -= unit_comp.GetMemoryUsage();
-		OutputFile out_stream;
-		created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
-		Container7z::ReserveSignatureHeader(out_stream);
-#ifdef _WIN32
-		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-#else
-		if(nice(1) < 0) {
-		}
-#endif
-		uint_least64_t packed = ar_comp.Compress(unit_comp, options, out_stream);
-		if (ar_comp.GetFileList().size() != 0 && !g_break) {
-			packed += Container7z::WriteDatabase(ar_comp, unit_comp, out_stream);
-			if (!created_file) {
-				std::Tcerr << "Compressed size: " << packed << " bytes" << std::endl;
-			}
-			std::Tcerr << Strings::kDone << std::endl;
-			return EXIT_SUCCESS;
-		}
+		return CompressFiles(archive_path, options, created_file);
 	}
 	catch (std::invalid_argument& ex) {
 		if (*ex.what() != '\0') {

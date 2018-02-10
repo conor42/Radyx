@@ -22,16 +22,20 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
 #include "OutputFile.h"
 
 namespace Radyx {
+<<<<<<< HEAD
 
 #ifdef _WIN32
+=======
+>>>>>>> next
 
-OutputFile::OutputFile()
+OutputFile::OutputFile() noexcept
 	: handle(INVALID_HANDLE_VALUE),
-	error_state(std::ios_base::goodbit)
+	error_state(std::ios_base::goodbit),
+	exception_flags(0),
+	saved_exception_flags(0)
 {
 }
 
@@ -70,18 +74,19 @@ OutputFile& OutputFile::put(char c)
 	return write(&c, 1);
 }
 
-OutputFile& OutputFile::write(const char* s, size_t n)
+OutputFile& OutputFile::write(const void* s, size_t n)
 {
 	while (!g_break && n != 0) {
 		// Avoid possible errors from large writes over a network in WinXP
 		DWORD to_write = static_cast<DWORD>(std::min(n, size_t(32) * 1024 * 1024 - 32768));
+		const char* src = reinterpret_cast<const char*>(s);
 		DWORD written;
-		if (WriteFile(handle, s, to_write, &written, NULL) == FALSE) {
+		if (WriteFile(handle, src, to_write, &written, NULL) == FALSE) {
 			AddError(std::ios_base::badbit);
 			break;
 		}
 		n -= written;
-		s += written;
+		src += written;
 	}
 	return *this;
 }
@@ -106,18 +111,19 @@ OutputFile& OutputFile::seekp(uint_least64_t pos)
 	return *this;
 }
 
-std::ios::iostate OutputFile::exceptions() const
+std::ios::iostate OutputFile::exceptions() const noexcept
 {
 	return exception_flags;
 }
 
-void OutputFile::exceptions(std::ios_base::iostate except)
+void OutputFile::exceptions(std::ios_base::iostate except) noexcept
 {
 	exception_flags = except;
+	saved_exception_flags = except;
 	error_state = std::ios_base::goodbit;
 }
 
-bool OutputFile::fail() const
+bool OutputFile::fail() const noexcept
 {
 	return (error_state & (std::ios_base::badbit | std::ios_base::failbit)) != 0;
 }
@@ -130,6 +136,36 @@ void OutputFile::AddError(std::ios_base::iostate error)
 	}
 }
 
+<<<<<<< HEAD
 #endif // _WIN32
 
 }
+=======
+OutputStream& OutputFile::Put(char c)
+{
+	return put(c);
+}
+
+OutputStream& OutputFile::Write(const void* s, size_t n)
+{
+	return write(s, n);
+}
+
+void OutputFile::DisableExceptions()
+{
+	saved_exception_flags = exception_flags;
+	exception_flags = 0;
+}
+
+void OutputFile::RestoreExceptions()
+{
+	exception_flags = saved_exception_flags;
+}
+
+bool OutputFile::Fail() const noexcept
+{
+	return fail();
+}
+
+} // Radyx
+>>>>>>> next

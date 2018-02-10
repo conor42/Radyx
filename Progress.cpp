@@ -40,6 +40,14 @@ Progress::~Progress()
 	Erase();
 }
 
+void Progress::Init(uint_least64_t total_bytes_, unsigned encode_weight_)
+{
+	total_bytes = total_bytes_;
+	next_update = total_bytes_ / 100;
+	build_weight = kWeightUnitTotal - encode_weight_;
+	encode_weight = encode_weight_;
+}
+
 unsigned Progress::ShowLocked()
 {
 	if (display_length != 0) {

@@ -55,7 +55,7 @@ struct Lzma2Options
     OptionalSetting<unsigned> divide_and_conquer;
     OptionalSetting<unsigned> block_overlap;
 	unsigned random_filter;
-	Lzma2Options()
+	Lzma2Options() noexcept
 		: lc(3),
 		lp(0),
 		pb(2),

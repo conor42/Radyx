@@ -65,7 +65,11 @@ public:
 	{
 	public:
 		InvalidParameter(const _TCHAR* arg) : arg_error(arg) {}
-		const _TCHAR* ArgError() const { return arg_error; }
+
+		const _TCHAR* ArgError() const {
+			return arg_error;
+		}
+
 	private:
 		const _TCHAR* arg_error;
 	};

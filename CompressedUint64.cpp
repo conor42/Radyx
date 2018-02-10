@@ -32,12 +32,12 @@
 
 namespace Radyx {
 
-CompressedUint64::CompressedUint64(uint_least64_t u)
+CompressedUint64::CompressedUint64(uint_least64_t u) noexcept
 {
 	*this = u;
 }
 
-CompressedUint64::CompressedUint64(const uint8_t* in_buffer, size_t byte_count)
+CompressedUint64::CompressedUint64(const uint8_t* in_buffer, size_t byte_count) noexcept
 {
 	uint8_t mask = 0x80;
 	size = 1;
@@ -55,7 +55,7 @@ CompressedUint64::CompressedUint64(const uint8_t* in_buffer, size_t byte_count)
 	}
 }
 
-void CompressedUint64::operator=(uint_least64_t u)
+void CompressedUint64::operator=(uint_least64_t u) noexcept
 {
 	uint8_t first_byte = 0;
 	uint8_t mask = 0x80;
@@ -76,7 +76,7 @@ void CompressedUint64::operator=(uint_least64_t u)
 	}
 }
 
-void CompressedUint64::operator=(const CompressedUint64& right)
+void CompressedUint64::operator=(const CompressedUint64& right) noexcept
 {
 	if (&right != this) {
 		size = right.size;
@@ -84,7 +84,7 @@ void CompressedUint64::operator=(const CompressedUint64& right)
 	}
 }
 
-CompressedUint64::operator uint_least64_t() const
+CompressedUint64::operator uint_least64_t() const noexcept
 {
 	uint_least64_t u = 0;
 	for (unsigned i = 1; i < size; ++i) {

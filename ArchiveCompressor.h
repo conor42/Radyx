@@ -1,8 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
 // Class:   ArchiveCompressor
-//          Reads input files into the unit compressor and collects
-//          information for the archive database
+//          Reads input files sequentially into a buffer
 //
 // Copyright 2015-present Conor McCarthy
 //
@@ -26,20 +25,23 @@
 #ifndef RADYX_ARCHIVE_COMPRESSOR_H
 #define RADYX_ARCHIVE_COMPRESSOR_H
 
+#include "common.h"
 #include <list>
 #include <unordered_set>
-#include "common.h"
+#include "ArchiveStreamIn.h"
+#include "OptionalSetting.h"
+#include "CoderInfo.h"
+#include "InPlaceFilter.h"
 #include "OutputFile.h"
 #include "Path.h"
-#include "OptionalSetting.h"
-#include "UnitCompressor.h"
+#include "RadyxOptions.h"
 #include "Crc32.h"
+#include "Progress.h"
+#include "Strings.h"
 
 namespace Radyx {
 
-class RadyxOptions;
-
-class ArchiveCompressor
+class ArchiveCompressor : public ArchiveStreamIn
 {
 public:
 	struct FileInfo
@@ -64,8 +66,9 @@ public:
 			mod_time(0),
 			attributes(0),
 			ext_index(GetExtensionIndex(name_ + ext)) {}
-		bool IsEmpty() const { return size == 0; }
-		FileInfo& operator=(const FileInfo&) = delete;
+		bool IsEmpty() const {
+			return size == 0;
+		}
 	};
 
 	struct DataUnit
@@ -74,27 +77,40 @@ public:
 		uint_least64_t unpack_size;
 		uint_least64_t pack_size;
 		uint_least64_t file_count;
-		CoderInfo coder_info;
-		CoderInfo bcj_info;
+		std::list<CoderInfo> coder_info;
 		std::list<FileInfo>::const_iterator in_file_first;
 		std::list<FileInfo>::const_iterator in_file_last;
-		bool used_bcj;
 		DataUnit()
 			: out_file_pos(0),
 			unpack_size(0),
 			pack_size(0),
-			file_count(0),
-			used_bcj(false) {}
+			file_count(0) {}
+		void Reset() {
+			file_count = 0;
+			unpack_size = 0;
+			coder_info.clear();
+		}
 	};
 
 	class FileReader
 	{
 	public:
-		FileReader(const FileInfo& fi, bool share_deny_none);
+		FileReader()
+#ifdef _WIN32
+			: handle(INVALID_HANDLE_VALUE)
+#else
+			: fd(-1)
+#endif
+		{}
+		FileReader(const FileInfo& fi, bool share_deny_none) {
+			Open(fi, share_deny_none);
+		}
 		~FileReader();
-		inline bool IsValid() const;
-		inline bool Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read);
+		bool Open(const FileInfo& fi, bool share_deny_none);
+		bool IsValid() const;
+		bool Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read);
 		void GetAttributes(FileInfo& fi, bool get_creation_time);
+		void Close();
 	private:
 #ifdef _WIN32
 		HANDLE handle;
@@ -103,74 +119,67 @@ public:
 #endif
 		FileReader(const FileReader&) = delete;
 		FileReader& operator=(const FileReader&) = delete;
+		FileReader(FileReader&&) = delete;
+		FileReader& operator=(FileReader&&) = delete;
 	};
 
-	ArchiveCompressor();
+	ArchiveCompressor(const RadyxOptions& options, Progress& progress);
+
 	void Add(const _TCHAR* path, size_t root, uint_least64_t size);
-	uint_least64_t Compress(UnitCompressor& unit_comp,
-		const RadyxOptions& options,
-		OutputStream& out_stream);
-	const std::list<FileInfo>& GetFileList() const { return file_list; }
-	const std::list<DataUnit>& GetUnitList() const { return unit_list; }
+	void PrepareList();
+	const std::list<FileInfo>& GetFileList() const {
+		return file_list;
+	}
+	const std::list<DataUnit>& GetUnitList() const {
+		return unit_list;
+	}
+	size_t GetFileCount() const {
+		return file_list.size();
+	}
 	size_t GetEmptyFileCount() const;
 	size_t GetNameLengthTotal() const;
+	uint_least64_t GetTotalByteCount() const noexcept {
+		return initial_total_bytes;
+	}
+	void InitUnit(OutputFile& out_stream);
+	bool IsExeUnit() const noexcept {
+		return ext_index >= exe_group;
+	}
+	size_t FinalizeUnit(std::list<CoderInfo>& coder_info, OutputFile& out_stream);
+	size_t Read(uint8_t* buffer, size_t length);
+	bool Complete() const noexcept {
+		return cur_file == file_list.end();
+	}
 
 private:
 	static const _TCHAR extensions[];
 
 	void EliminateDuplicates();
 	void DetectCollisions();
-	bool AddFile(FileInfo& fi,
-		UnitCompressor& unit_comp,
-		const RadyxOptions& options,
-		Progress& progress,
-		OutputStream& out_stream);
+	bool AddFile(uint8_t* buffer, size_t length, unsigned long& read_count);
+
 	static unsigned GetExtensionIndex(const _TCHAR* ext);
 
 	std::list<FileInfo> file_list;
 	std::list<DataUnit> unit_list;
 	std::unordered_set<Path, std::hash<FsString>> path_set;
 	std::list<FsString> file_warnings;
+	std::list<FileInfo>::iterator cur_file;
+	const RadyxOptions& options;
+	Progress& progress;
+	DataUnit unit;
+	uint_least64_t initial_size;
 	uint_least64_t initial_total_bytes;
+	FileReader reader;
+	unsigned exe_group;
+	unsigned ext_index;
 
 	ArchiveCompressor(const ArchiveCompressor&) = delete;
 	ArchiveCompressor& operator=(const ArchiveCompressor&) = delete;
+	ArchiveCompressor(ArchiveCompressor&&) = delete;
+	ArchiveCompressor& operator=(ArchiveCompressor&&) = delete;
 };
 
-#ifdef _WIN32
-
-bool ArchiveCompressor::FileReader::IsValid() const
-{
-	return handle != INVALID_HANDLE_VALUE;
-}
-
-bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read)
-{
-	return ReadFile(handle, buffer, byte_count, &bytes_read, NULL) != 0;
-}
-
-#else
-
-#include <unistd.h>
-
-bool ArchiveCompressor::FileReader::IsValid() const
-{
-	return fd >= 0;
-}
-
-bool ArchiveCompressor::FileReader::Read(void* buffer, uint_fast32_t byte_count, unsigned long& bytes_read)
-{
-	ssize_t nread = read(fd, buffer, byte_count);
-	if (nread < 0) {
-		return false;
-	}
-	else {
-		bytes_read = static_cast<unsigned long>(nread);
-		return true;
-	}
-}
+} // Radyx
 
 #endif
-
-}
-#endif // RADYX_ARCHIVE_COMPRESSOR_H
