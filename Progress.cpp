@@ -61,7 +61,7 @@ unsigned Progress::ShowLocked()
 void Progress::RewindLocked()
 {
 	if (!g_break) {
-		std::Tcerr.write(_T("\b\b\b\b\b\b\b"), display_length & 7);
+		std::Tcerr << _T('\r');
 		display_length = 0;
 	}
 }

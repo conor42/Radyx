@@ -80,6 +80,7 @@ build/
 *.o
 *.exe
 *.7z
+*.db
 
 # Visual C++ cache files
 ipch/
