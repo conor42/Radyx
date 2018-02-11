@@ -36,13 +36,8 @@
 #include "CharType.h"
 
 namespace Radyx {
-<<<<<<< HEAD
-	
-class OutputFile
-=======
 
 class OutputFile : public OutputStream
->>>>>>> next
 {
 public:
 	OutputFile() noexcept;
@@ -80,18 +75,13 @@ private:
 
 } // Radyx
 
-}
-
 #else 
 
 #include <ostream>
 
-<<<<<<< HEAD
 namespace Radyx {
 
 typedef std::ostream OutputStream;
-=======
->>>>>>> next
 typedef std::ofstream OutputFile;
 
 }

@@ -143,13 +143,13 @@ int CompressFiles(Path& archive_path, RadyxOptions& options, bool& created_file)
 	OutputFile out_stream;
 	created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
 	Container7z::ReserveSignatureHeader(out_stream);
-	progress.Init(ar_comp.GetTotalByteCount(), encoder.GetEncodeWeight());
+	progress.Init(ar_comp.GetTotalByteCount());
 	uint_least64_t packed = 0;
 	std::list<CoderInfo> coder_info;
 	while (!g_break && !ar_comp.Complete()) {
 		ar_comp.InitUnit(out_stream);
-		unit_comp.Compress(&ar_comp, &filters, coder_info, &progress);
-		packed += encoder.GetPackSize();
+		unit_comp.Compress(&ar_comp, out_stream, &filters, coder_info, &progress);
+		packed += unit_comp.GetPackSize();
 		ar_comp.FinalizeUnit(coder_info, out_stream);
 }
 	if (ar_comp.GetFileCount() != 0 && !g_break) {

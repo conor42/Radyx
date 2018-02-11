@@ -291,14 +291,10 @@ void UnitCompressor::Shift()
 {
 	CheckError();
 	if (async_read) {
-		FL2_blockBuffer block = { data_buffers[buffer_index ^ 1].get(), block_start, block_end, dictionary_size };
-		FL2_shiftBlock_switch(cctx, &block, data_buffers[buffer_index].get());
-		block_start = block.start;
+		data_buffers[buffer_index].Shift(data_buffers[buffer_index ^ 1], FL2_blockOverlap(cctx));
 	}
 	else {
-		FL2_blockBuffer block = { data_buffers[0].get(), block_start, block_end, dictionary_size };
-		FL2_shiftBlock(cctx, &block);
-		block_start = block.start;
+		data_buffers[buffer_index].Shift(FL2_blockOverlap(cctx));
 	}
 }
 

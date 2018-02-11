@@ -134,32 +134,33 @@ public:
 		return DataBlock(data_buffer.get(), block_start, end);
 	}
 
-	void Shift(size_t overlap) {
-		if ((block_end & kBoundaryMask) > overlap) {
-			size_t src = std::min((block_end & kBoundaryMask) - overlap, buffer_main_size);
+	void Shift(size_t overlap, const uint8_t* src_buf) {
+		if (block_end > overlap) {
+			size_t src = std::min(block_end - overlap, buffer_main_size) & kBoundaryMask;
 			size_t shift_len = block_end - src;
-			if (src >= shift_len) {
-				memcpy(data_buffer.get(), data_buffer.get() + src, shift_len);
+			if (src_buf || src >= shift_len) {
+				memcpy(data_buffer.get(), (src_buf ? src_buf : data_buffer.get()) + src, shift_len);
 			}
-			else {
+			else if (src != 0) {
 				memmove(data_buffer.get(), data_buffer.get() + src, shift_len);
 			}
 			block_start = shift_len - GetOverrun();
 			block_end = shift_len;
 		}
+		else {
+			block_start = block_end;
+		}
+	}
+
+	void Shift(size_t overlap)
+	{
+		Shift(overlap, nullptr);
 	}
 
 	void Shift(CoderBuffer& other, size_t overlap) {
 		block_start = other.block_start;
 		block_end = other.block_end;
-		size_t src = 0;
-		if ((block_end & kBoundaryMask) > overlap) {
-			src = std::min((block_end & kBoundaryMask) - overlap, buffer_main_size);
-		}
-		size_t shift_len = block_end - src;
-		memcpy(data_buffer.get(), other.data_buffer.get() + src, shift_len);
-		block_start = shift_len - GetOverrun();
-		block_end = shift_len;
+		Shift(overlap, other.data_buffer.get());
 	}
 
 	bool Unprocessed() const noexcept {

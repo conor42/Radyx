@@ -25,11 +25,8 @@
 #include "OutputFile.h"
 
 namespace Radyx {
-<<<<<<< HEAD
 
 #ifdef _WIN32
-=======
->>>>>>> next
 
 OutputFile::OutputFile() noexcept
 	: handle(INVALID_HANDLE_VALUE),
@@ -136,11 +133,8 @@ void OutputFile::AddError(std::ios_base::iostate error)
 	}
 }
 
-<<<<<<< HEAD
 #endif // _WIN32
 
-}
-=======
 OutputStream& OutputFile::Put(char c)
 {
 	return put(c);
@@ -168,4 +162,3 @@ bool OutputFile::Fail() const noexcept
 }
 
 } // Radyx
->>>>>>> next

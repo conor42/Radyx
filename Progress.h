@@ -35,16 +35,16 @@ namespace Radyx {
 class Progress
 {
 public:
-	Progress(uint_least64_t total_bytes_);
+	Progress();
 	~Progress();
-	void Init(uint_least64_t total_bytes_, unsigned encode_weight_);
+	void Init(uint_least64_t total_bytes_);
 	inline void Show();
 	inline void Rewind();
 	void RewindLocked();
 	inline void Erase();
     void Update(size_t bytes_done);
     inline void Adjust(int_least64_t size_change);
-	inline std::mutex& GetMutex() { return mtx; }
+	inline std::mutex& GetMutex();
 
 private:
 	unsigned ShowLocked();
