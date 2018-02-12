@@ -55,6 +55,7 @@ public:
 	OutputStream& Put(char c);
 	OutputStream& Write(const void* s, size_t n);
 	void Flush() {}
+	void End() {}
 	void DisableExceptions();
 	void RestoreExceptions();
 	bool Fail() const noexcept;

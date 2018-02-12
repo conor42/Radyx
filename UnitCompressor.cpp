@@ -228,7 +228,8 @@ void UnitCompressor::Compress(ArchiveStreamIn* in_stream,
 			}
 			else {
 				WaitCompletion();
-				pack_size = GetPackSize() + Finalize(out_stream);
+				Finalize(out_stream);
+				pack_size = GetPackSize();
 				break;
 			}
 		}
@@ -324,6 +325,7 @@ size_t UnitCompressor::Finalize(OutputStream&)
     size_t csize = FL2_endFrame_toFn(cctx, WriterFn, &args);
     if (FL2_isError(csize))
         throw IoException(Strings::kCannotWriteArchive, _T(""));
+	pack_size += csize;
     return csize;
 }
 

@@ -235,33 +235,31 @@ void Container7z::WriteSubStreamsInfo(const ArchiveCompressor& arch_comp, Writer
 
 uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 	UnitCompressor& unit_comp,
-	OutputStream& out_stream)
+	OutputFile& out_stream)
 {
 	out_stream.exceptions(std::ios_base::failbit | std::ios_base::badbit);
-	unit_comp.Begin(false, false);
+	unit_comp.Begin(false);
 	uint_least64_t packed_size = 0;
 	try {
 		uint_least64_t header_offset = out_stream.tellp();
 		header_offset -= 32;
-		WriteHeader(arch_comp, unit_comp, out_stream);
-		unit_comp.Compress(out_stream, nullptr);
-		unit_comp.WaitCompletion();
+		CompressedStreamWrapper wrapper(out_stream, unit_comp);
+		WriteHeader(arch_comp, wrapper);
+		wrapper.End();
 		packed_size = unit_comp.GetPackSize();
-		packed_size += unit_comp.Finalize(out_stream);
 		uint_least64_t header_unpack_size = unit_comp.GetUnpackSize();
         CoderInfo coder_info = unit_comp.GetCoderInfo();
 		unit_comp.Begin(false);
 		uint_least64_t header_header_offset = out_stream.tellp();
 		header_header_offset -= 32;
 		uint_least64_t header_pack_size = header_header_offset - header_offset;
-		uint_fast32_t crc32 = WriteHeaderHeader(unit_comp,
-			header_offset,
+		uint_fast32_t crc32 = WriteHeaderHeader(header_offset,
 			header_pack_size,
 			header_unpack_size,
             coder_info,
 			out_stream);
 		WriteSignatureHeader(header_header_offset, out_stream.tellp() - (header_header_offset + 32), crc32, out_stream);
-		packed_size += encoder.GetPackSize() + kSignatureHeaderSize;
+		packed_size += unit_comp.GetPackSize() + kSignatureHeaderSize;
 	}
 	catch (std::ios_base::failure&) {
 		if (!g_break) {

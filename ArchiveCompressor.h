@@ -145,8 +145,8 @@ public:
 	bool IsExeUnit() const noexcept {
 		return ext_index >= exe_group;
 	}
-	size_t FinalizeUnit(std::list<CoderInfo>& coder_info, OutputFile& out_stream);
-	size_t Read(uint8_t* buffer, size_t length);
+	uint_least64_t FinalizeUnit(std::list<CoderInfo>& coder_info, OutputFile& out_stream);
+	size_t Read(uint8_t* const buffer, size_t const length);
 	bool Complete() const noexcept {
 		return cur_file == file_list.end();
 	}

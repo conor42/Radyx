@@ -43,7 +43,7 @@ public:
 	static void ReserveSignatureHeader(OutputFile& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
 		UnitCompressor& unit_comp,
-		OutputStream& out_stream);
+		OutputFile& out_stream);
 
 private:
 	enum PropertyId
@@ -73,6 +73,42 @@ private:
 		kComment,
 		kEncodedHeader,
 		kStartPos
+	};
+
+	class CompressedStreamWrapper : public OutputStream
+	{
+	public:
+		CompressedStreamWrapper(OutputStream& out_stream_, UnitCompressor& unit_comp_)
+			: out_stream(out_stream_),
+			unit_comp(unit_comp_)
+		{ }
+		OutputStream& Write(const void* data, size_t count) {
+			unit_comp.Write(data, count, out_stream);
+			return *this;
+		}
+
+		OutputStream& Put(char c) {
+			Write(&c, 1);
+			return *this;
+		}
+		void Flush() {
+			if (unit_comp.Unprocessed()) {
+				unit_comp.Compress(nullptr, out_stream, nullptr);
+			}
+			unit_comp.WaitCompletion();
+		}
+		void End() {
+			Flush();
+			unit_comp.Finalize(out_stream);
+		}
+		void DisableExceptions() {}
+		void RestoreExceptions() {}
+		bool Fail() const noexcept {
+			return false;
+		}
+	private:
+		OutputStream & out_stream;
+		UnitCompressor& unit_comp;
 	};
 
 	class Writer

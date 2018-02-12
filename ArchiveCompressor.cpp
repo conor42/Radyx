@@ -75,6 +75,10 @@ _T("\0exe\0dll\0ocx\0vbx\0sfx\0sys\0awx\0com\0out\0");
 
 #ifdef _WIN32
 
+#ifdef _MSC_VER
+#  pragma warning(disable : 4996)        /* disable: C4996: Call to 'std::basic_string::copy' with parameters that may be unsafe */
+#endif
+
 bool ArchiveCompressor::FileReader::Open(const FileInfo& fi, bool share_deny_none)
 {
 	std::array<_TCHAR, MAX_PATH> path;
@@ -210,7 +214,7 @@ void ArchiveCompressor::Add(const _TCHAR* path, size_t root, uint_least64_t size
 	initial_total_bytes += size;
 }
 
-size_t ArchiveCompressor::FinalizeUnit(std::list<CoderInfo>& coder_info, OutputFile& out_stream) {
+uint_least64_t ArchiveCompressor::FinalizeUnit(std::list<CoderInfo>& coder_info, OutputFile& out_stream) {
 	unit.pack_size = out_stream.tellp() - unit.out_file_pos;
 	// Add the unit
 	unit_list.push_back(unit);
@@ -220,16 +224,16 @@ size_t ArchiveCompressor::FinalizeUnit(std::list<CoderInfo>& coder_info, OutputF
 	return u.pack_size;
 }
 
-size_t ArchiveCompressor::Read(uint8_t* buffer, size_t length)
+size_t ArchiveCompressor::Read(uint8_t* const buffer, size_t const length)
 {
 	size_t read_length = 0;
 	while (!g_break && length > 0 && cur_file != file_list.end()) {
 		if (reader.IsValid()) {
+			size_t const to_read = length - read_length;
 			unsigned long read_count = 0;
-			if (AddFile(buffer + read_length, length, read_count)) {
-				length -= read_count;
+			if (AddFile(buffer + read_length, to_read, read_count)) {
 				read_length += read_count;
-				if (read_count < length) {
+				if (read_count < to_read) {
 					reader.Close();
 					// Adjust the total bytes to add if the size was different from when it was opened
 					if (cur_file->size != initial_size) {
