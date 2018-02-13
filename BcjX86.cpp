@@ -34,12 +34,10 @@ namespace Radyx {
 const bool BcjX86::kMaskToAllowedStatus[8] = { 1, 1, 1, 0, 1, 0, 0, 0 };
 const uint8_t BcjX86::kMaskToBitNumber[8] = { 0, 1, 2, 2, 3, 3, 3, 3 };
 
-BcjX86::BcjX86(ArchiveCompressor* files_) noexcept
-	: files(files_),
-	ip(0),
+BcjX86::BcjX86() noexcept
+	: ip(0),
 	prev_mask(0),
-	overrun(0),
-	did_encode(false)
+	overrun(0)
 {
 }
 
@@ -50,9 +48,8 @@ size_t BcjX86::GetMaxOverrun() const noexcept
 
 size_t BcjX86::Encode(uint8_t* buffer, size_t main_end, size_t block_end)
 {
-	if (files && !files->IsExeUnit())
+	if (!IsEnabled())
 		return block_end;
-	did_encode = true;
 	return Transform(buffer, main_end, block_end, true);
 }
 
@@ -149,12 +146,6 @@ void BcjX86::Reset() noexcept
 	ip = 0;
 	prev_mask = 0;
 	overrun = 0;
-	did_encode = false;
-}
-
-bool BcjX86::DidEncode() const noexcept
-{
-	return did_encode;
 }
 
 CoderInfo BcjX86::GetCoderInfo() const noexcept

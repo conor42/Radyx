@@ -127,7 +127,11 @@ void UnitCompressor::Begin(bool async_read_)
 	pack_size = 0;
 	async_read = async_read_ && data_buffers[1];
 	buffer_index = 0;
-    FL2_beginFrame(cctx);
+	data_buffers[0].Reset();
+	if (async_read) {
+		data_buffers[1].Reset();
+	}
+	FL2_beginFrame(cctx);
 }
 
 size_t UnitCompressor::GetAvailableSpace() const
@@ -210,33 +214,31 @@ void UnitCompressor::CheckError() const
 	}
 }
 
-void UnitCompressor::Compress(ArchiveStreamIn* in_stream,
+void UnitCompressor::CompressStream(ArchiveStreamIn* in_stream,
 	OutputStream& out_stream,
 	FilterList* filters,
 	std::list<CoderInfo>& coder_info,
 	Progress* progress)
 {
-	pack_size = 0;
-	while (!g_break)
-	{
+	Begin();
+	while (!g_break) {
+		Shift();
 		size_t in_size = Read(in_stream);
+		bool last = !IsFull();
 
 		if (Unprocessed()) {
 			Compress(filters, out_stream, progress);
-			if (IsFull()) {
-				Shift();
-			}
-			else {
-				WaitCompletion();
-				Finalize(out_stream);
-				pack_size = GetPackSize();
-				break;
-			}
+		}
+		if (last) {
+			WaitCompletion();
+			Finalize(out_stream);
+			pack_size = GetPackSize();
+			break;
 		}
 	}
 	coder_info.clear();
 	for (auto& f : *filters) {
-		if (f->DidEncode()) {
+		if (f->IsEnabled()) {
 			coder_info.push_front(f->GetCoderInfo());
 		}
 		f->Reset();

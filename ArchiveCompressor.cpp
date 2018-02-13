@@ -227,7 +227,7 @@ uint_least64_t ArchiveCompressor::FinalizeUnit(std::list<CoderInfo>& coder_info,
 size_t ArchiveCompressor::Read(uint8_t* const buffer, size_t const length)
 {
 	size_t read_length = 0;
-	while (!g_break && length > 0 && cur_file != file_list.end()) {
+	while (!g_break && read_length < length && cur_file != file_list.end()) {
 		if (reader.IsValid()) {
 			size_t const to_read = length - read_length;
 			unsigned long read_count = 0;
@@ -264,17 +264,17 @@ size_t ArchiveCompressor::Read(uint8_t* const buffer, size_t const length)
 				progress.Adjust(-static_cast<int_least64_t>(initial_size));
 			}
 		}
-		if (!reader.IsValid()) {
+		if (!reader.IsValid() && cur_file != file_list.end()) {
+			unsigned prev_ext_index = ext_index;
+			ext_index = cur_file->ext_index;
 			if(unit.unpack_size >= options.solid_unit_size
 				|| unit.file_count >= options.solid_file_count
-				|| cur_file == file_list.end()
-				|| (options.bcj_filter && ext_index < exe_group && cur_file->ext_index >= exe_group)
-				|| (options.solid_by_extension && ext_index != cur_file->ext_index))
+				|| (options.bcj_filter && prev_ext_index < exe_group && cur_file->ext_index >= exe_group)
+				|| (options.solid_by_extension && prev_ext_index != cur_file->ext_index))
 			{
 				return read_length;
 			}
 			initial_size = cur_file->size;
-			ext_index = cur_file->ext_index;
 			if (!reader.Open(*cur_file, options.share_deny_none)) {
 				const _TCHAR* os_msg = IoException::GetOsMessage();
 				std::unique_lock<std::mutex> lock(progress.GetMutex());
@@ -420,6 +420,7 @@ void ArchiveCompressor::PrepareList()
 	// Sort the file list by extension index then name
 	file_list.sort(CompareFileInfo);
 	cur_file = file_list.begin();
+	ext_index = cur_file->ext_index;
 }
 
 // Get the index of this extension in the list

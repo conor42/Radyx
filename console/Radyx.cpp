@@ -131,8 +131,10 @@ int CompressFiles(Path& archive_path, RadyxOptions& options, bool& created_file)
 		return EXIT_SUCCESS;
 	}
 	FilterList filters;
+	InPlaceFilter* bcj = nullptr;
 	if (options.bcj_filter) {
-		filters.emplace_back(std::unique_ptr<BcjX86>(new BcjX86(&ar_comp)));
+		filters.emplace_back(std::unique_ptr<BcjX86>(new BcjX86));
+		bcj = filters.back().get();
 	}
 	size_t read_extra = 0;
 	for (auto& f : filters) {
@@ -148,7 +150,10 @@ int CompressFiles(Path& archive_path, RadyxOptions& options, bool& created_file)
 	std::list<CoderInfo> coder_info;
 	while (!g_break && !ar_comp.Complete()) {
 		ar_comp.InitUnit(out_stream);
-		unit_comp.Compress(&ar_comp, out_stream, &filters, coder_info, &progress);
+		if (bcj) {
+			bcj->Enable(ar_comp.IsExeUnit());
+		}
+		unit_comp.CompressStream(&ar_comp, out_stream, &filters, coder_info, &progress);
 		packed += unit_comp.GetPackSize();
 		ar_comp.FinalizeUnit(coder_info, out_stream);
 }

@@ -222,3 +222,5 @@ pip-log.txt
 .mr.developer.cfg
 Windows/Radyx.v12.suo
 *.db
+*.db
+*.db-wal

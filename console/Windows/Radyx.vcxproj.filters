@@ -159,6 +159,9 @@
     <ClInclude Include="..\..\InPlaceFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\CoderBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\ArchiveCompressor.cpp">

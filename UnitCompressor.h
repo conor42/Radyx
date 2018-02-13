@@ -49,7 +49,7 @@ public:
 	uint8_t* GetAvailableBuffer() { return data_buffers[buffer_index].get() + block_end; }
 	void AddByteCount(size_t count) { block_end += count; }
 	void RemoveByteCount(size_t count) { block_end -= count; }
-	void Compress(ArchiveStreamIn* inStream, OutputStream& out_stream, FilterList* filters, std::list<CoderInfo>& coder_info, Progress* progress);
+	void CompressStream(ArchiveStreamIn* inStream, OutputStream& out_stream, FilterList* filters, std::list<CoderInfo>& coder_info, Progress* progress);
 	bool IsFull() const {
 		return data_buffers[buffer_index].IsFull();
 	}

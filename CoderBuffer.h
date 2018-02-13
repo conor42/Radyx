@@ -50,8 +50,8 @@ public:
 	}
 
 	void reset(size_t buffer_main_size_, size_t read_extra_) {
-		if (buffer_main_size_ && read_extra >= buffer_main_size) {
-			buffer_main_size_ = read_extra + kBoundaryMask;
+		if (buffer_main_size_ && read_extra_ >= buffer_main_size_) {
+			buffer_main_size_ += read_extra_;
 		}
 		data_buffer.reset(buffer_main_size_ ? new uint8_t[buffer_main_size_ + read_extra_] : nullptr);
 		buffer_main_size = buffer_main_size_;
@@ -98,14 +98,9 @@ public:
 	}
 
 	void Reset() {
-		if (block_end > buffer_main_size) {
-			block_end -= buffer_main_size;
-			memcpy(data_buffer.get(), data_buffer.get() + buffer_main_size, block_end);
-		}
-		else {
-			block_end = 0;
-		}
+		assert(block_start >= block_end);
 		block_start = 0;
+		block_end = 0;
 	}
 
 	DataBlock GetMainData() {
@@ -131,7 +126,9 @@ public:
 		else {
 			end = std::min(end, GetMainEnd());
 		}
-		return DataBlock(data_buffer.get(), block_start, end);
+		size_t start = block_start;
+		block_start = block_end;
+		return DataBlock(data_buffer.get(), start, end);
 	}
 
 	void Shift(size_t overlap, const uint8_t* src_buf) {
