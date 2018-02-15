@@ -13,6 +13,7 @@ namespace Radyx {
 
 class Database7z
 {
+private:
 	struct FolderCoderInfo
 	{
 		CoderInfo coder_info;
@@ -51,6 +52,12 @@ class Database7z
 		uint_fast32_t crc32;
 		bool empty;
 	};
+public:
+	Database7z(int hndl);
+
+private:
+	std::vector<StreamsInfo> streams_info;
+	std::vector<FileInfo> files_info;
 };
 
 }

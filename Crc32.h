@@ -31,8 +31,12 @@ class Crc32
 {
 public:
 	Crc32() noexcept : crc32(0xFFFFFFFF) {}
+
+	Crc32(const uint8_t* buffer, size_t count) noexcept : crc32(0xFFFFFFFF) {
+		Add(buffer, count);
+	}
 	inline void Add(uint8_t byte) noexcept;
-	inline void Add(uint8_t* buffer, size_t count) noexcept;
+	inline void Add(const uint8_t* buffer, size_t count) noexcept;
 	operator uint_fast32_t() const noexcept {
 		return crc32 ^ 0xFFFFFFFF;
 	}
@@ -58,7 +62,7 @@ void Crc32::Add(uint8_t byte) noexcept
 	crc32 = crc_table[(crc32 ^ byte) & 0xFF] ^ (crc32 >> 8);
 }
 
-void Crc32::Add(uint8_t* buffer, size_t count) noexcept
+void Crc32::Add(const uint8_t* buffer, size_t count) noexcept
 {
 	for (size_t i = 0; i < count; ++i) {
 		Add(buffer[i]);

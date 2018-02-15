@@ -43,6 +43,14 @@ class ArchiveCompressor;
 class RadyxOptions
 {
 public:
+	enum Command
+	{
+		kAdd,
+		kExtract,
+		kTest,
+		kList
+	};
+
 	enum Recurse
 	{
 		kRecurseNone,
@@ -80,6 +88,7 @@ public:
 	std::list<FileSpec> file_specs;
 	std::list<FileSpec> exclusions;
 	FsString working_dir;
+	Command command;
 	Recurse default_recurse;
 	bool share_deny_none;
 	bool store_full_paths;

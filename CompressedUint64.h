@@ -36,6 +36,10 @@ class CompressedUint64
 public:
 	CompressedUint64(uint_least64_t u) noexcept;
 	CompressedUint64(const uint8_t* in_buffer, size_t byte_count) noexcept;
+	uint_least64_t Load(const uint8_t* in_buffer, size_t byte_count) noexcept {
+		*this = CompressedUint64(in_buffer, byte_count);
+		return operator uint_least64_t();
+	}
 	void operator=(uint_least64_t u) noexcept;
 	void operator=(const CompressedUint64& right) noexcept;
 	operator uint_least64_t() const noexcept;

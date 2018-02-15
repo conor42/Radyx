@@ -33,16 +33,104 @@
 #elif !defined(_UNICODE)
 #include "../utf8cpp/source/utf8.h" // https://github.com/nemtrif/utfcpp
 #endif
+#include <io.h>
 #include "common.h"
 #include "Container7z.h"
 #include "CompressedUint64.h"
 #include "Crc32.h"
 #include "IoException.h"
 #include "Strings.h"
+#include "fast-lzma2/mem.h"
 
 namespace Radyx {
 
+static const unsigned kMajorVersion = 0;
+
 const char Container7z::kSignature[6] = { '7', 'z', '\xBC', '\xAF', '\x27', '\x1C' };
+
+Radyx::Container7z::Database7z::Database7z(int hndl, Path& path)
+{
+	SignatureHeader header;
+	_read(hndl, &header, 8);
+	if (memcmp(header.signature, kSignature, sizeof(kSignature)) != 0)
+		throw IoException(L"Unknown file type", path.c_str());
+	if(header.version_major != kMajorVersion)
+		throw IoException(L".7z format version unsupported", path.c_str());
+	uint8_t buf[kSignatureHeaderSize - 8];
+	_read(hndl, buf, sizeof(buf));
+	header.crc32 = MEM_readLE32(buf);
+	Crc32 crc32(buf, sizeof(buf));
+	if(header.crc32 != crc32)
+		throw IoException(L"Header corrupted", path.c_str());
+	header.next_header_pos = MEM_readLE64(buf + 4);
+	header.next_header_size = MEM_readLE64(buf + 12);
+	header.next_header_crc32 = MEM_readLE32(buf + 20);
+}
+
+void Container7z::Database7z::ReadHeader(int hndl, uint64_t pos, uint64_t size, uint32_t crc32)
+{
+	_lseeki64(hndl, pos, SEEK_SET);
+
+}
+
+bool Container7z::Database7z::ReadStreamsInfo(const uint8_t* data, const uint8_t* end, StreamsInfo & streams_info)
+{
+	while (data < end) {
+		switch (*data++) {
+		case kPackInfo:
+			CompressedUint64 value(data, end - data);
+			data += value.GetSize();
+			streams_info.file_pos = value;
+			streams_info.pack_sizes.clear();
+			uint8_t id = *data++;
+			if (id == kSize) {
+				value.Load(data, end - data);
+				data += value.GetSize();
+				size_t size = (size_t)value.operator uint_least64_t();
+				streams_info.pack_sizes.reserve(size);
+				for (size_t i = 0; i < size; ++i) {
+					value.Load(data, end - data);
+					data += value.GetSize();
+					streams_info.pack_sizes.push_back(value.operator uint_least64_t());
+				}
+				id = *data++;
+			}
+			if (id != kEnd)
+				return false;
+			break;
+		case kUnpackInfo:
+			switch (*data++) {
+			case kFolder: {
+				CompressedUint64 value(data, end - data);
+				data += value.GetSize();
+				size_t size = (size_t)value.operator uint_least64_t();
+				if (*data++ != kEnd)
+					return false;
+				for (size_t i = 0; i < size; ++i) {
+					value.Load(data, end - data);
+					data += value.GetSize();
+					size_t coder_count = (size_t)value.operator uint_least64_t();
+					streams_info.folders.resize(coder_count);
+					for (size_t j = 0; j < coder_count; ++j) {
+						data = ReadFolderInfo(data, end, streams_info.folders[j]);
+					}
+					for (size_t j = 0; j < coder_count; ++j) {
+						value.Load(data, end - data);
+						data += value.GetSize();
+						uint_least64_t in = value;
+						value.Load(data, end - data);
+						data += value.GetSize();
+						uint_least64_t out = value;
+						streams_info.folders[j].bind_pairs.clear();
+						streams_info.folders[j].bind_pairs.emplace_back(in, out);
+					}
+				}
+				break;
+			}
+			}
+		}
+	}
+}
 
 void Container7z::Writer::WriteName(const FsString& name, size_t root)
 {
@@ -54,7 +142,7 @@ void Container7z::Writer::WriteName(const FsString& name, size_t root)
 		WriteByte(static_cast<uint8_t>(name[i] >> 8));
 	}
 #elif defined HAVE_CODECVT
-	std::codecvt_utf8_utf16<char16_t> converter;
+	std::codecvt_utf8_utf16<char16_t> converter; // todo: check endianness
 	char16_t buf_char_16[kNameConverterBufferSize];
 	mbstate_t mbs = std::mbstate_t();
 	const char* next1;

@@ -30,6 +30,7 @@
     <ClInclude Include="..\..\CompressedUint64.h" />
     <ClInclude Include="..\..\Container7z.h" />
     <ClInclude Include="..\..\Crc32.h" />
+    <ClInclude Include="..\..\Database7z.h" />
     <ClInclude Include="..\..\DataBlock.h" />
     <ClInclude Include="..\..\DirScanner.h" />
     <ClInclude Include="..\..\ErrorCode.h" />
@@ -75,6 +76,7 @@
     <ClCompile Include="..\..\CompressedUint64.cpp" />
     <ClCompile Include="..\..\Container7z.cpp" />
     <ClCompile Include="..\..\Crc32.cpp" />
+    <ClCompile Include="..\..\Database7z.cpp" />
     <ClCompile Include="..\..\DirScanner.cpp" />
     <ClCompile Include="..\..\fast-lzma2\error_private.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_common.c" />

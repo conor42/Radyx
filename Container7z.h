@@ -40,6 +40,69 @@ namespace Radyx {
 class Container7z
 {
 public:
+	class Database7z
+	{
+	private:
+		struct SignatureHeader
+		{
+			uint8_t signature[6];
+			uint8_t version_major;
+			uint8_t version_minor;
+			uint32_t crc32;
+			uint64_t next_header_pos;
+			uint64_t next_header_size;
+			uint32_t next_header_crc32;
+		};
+
+		struct FolderCoderInfo
+		{
+			CoderInfo coder_info;
+			uint_least64_t unpack_size;
+		};
+
+		struct SubStreamInfo
+		{
+			uint_least64_t unpack_size;
+			uint_fast32_t crc32;
+		};
+
+		struct Folder
+		{
+			std::vector<FolderCoderInfo> coders_info;
+			std::vector<std::pair<uint_least64_t, uint_least64_t>> bind_pairs;
+			uint_fast32_t crc32;
+			std::vector<SubStreamInfo> substreams_info;
+		};
+
+		struct StreamsInfo
+		{
+			uint_least64_t file_pos;
+			std::vector<uint_least64_t> pack_sizes;
+			std::vector<uint_fast32_t> crc32s;
+			std::vector<Folder> folders;
+		};
+
+		struct FileInfo
+		{
+			FsString name;
+			uint_least64_t size;
+			OptionalSetting<uint_least64_t> creat_time;
+			OptionalSetting<uint_least64_t> mod_time;
+			OptionalSetting<uint_fast32_t> attributes;
+			uint_fast32_t crc32;
+			bool empty;
+		};
+	public:
+		Database7z(int hndl, Path& path);
+		void ReadHeader(int hndl, uint64_t pos, uint64_t size, uint32_t crc32);
+
+	private:
+		bool ReadStreamsInfo(const uint8_t* data, const uint8_t* end, StreamsInfo& streams_info);
+		uint8_t* ReadFolderInfo(const uint8_t* data, const uint8_t* end, Folder& folder);
+		std::vector<StreamsInfo> streams_info;
+		std::vector<FileInfo> files_info;
+	};
+
 	static void ReserveSignatureHeader(OutputFile& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
 		UnitCompressor& unit_comp,

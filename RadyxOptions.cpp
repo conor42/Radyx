@@ -73,7 +73,8 @@ void RadyxOptions::FileSpec::SetFullPath(const _TCHAR* full_path)
 }
 
 RadyxOptions::RadyxOptions(int argc, _TCHAR* argv[], Path& archive_path)
-	: default_recurse(kRecurseNone),
+	: command(kAdd),
+	default_recurse(kRecurseNone),
 	share_deny_none(false),
 	store_full_paths(false),
 //	yes_to_all(false),
@@ -172,13 +173,19 @@ void RadyxOptions::ParseCommand(int argc, _TCHAR* argv[])
 	if (argv[1][1] == '\0') {
 		switch (argv[1][0]) {
 		case 'a':
+			command = kAdd;
 			return;
-		case 'e':
 		case 'x':
+			store_full_paths = true;
+		case 'e':
+			command = kExtract;
+			return;
 		case 'l':
+			command = kList;
+			return;
 		case 't':
-			std::Tcerr << Strings::kExtractionUnsupported << std::endl;
-			throw std::invalid_argument("");
+			command = kTest;
+			return;
 		default:
 			break;
 		}

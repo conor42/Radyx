@@ -168,6 +168,13 @@ int CompressFiles(Path& archive_path, RadyxOptions& options, bool& created_file)
 	return EXIT_FAILURE;
 }
 
+#include <io.h>
+
+int ExtractArchive(Path& archive_path, RadyxOptions& options)
+{
+
+}
+
 int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 {
 	signal(SIGINT, SignalHandler);
@@ -176,7 +183,10 @@ int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 	Path archive_path;
 	try {
 		RadyxOptions options(argc, argv, archive_path);
-		return CompressFiles(archive_path, options, created_file);
+		if (options.command == RadyxOptions::kAdd)
+			return CompressFiles(archive_path, options, created_file);
+		else if (options.command == RadyxOptions::kTest)
+			return ExtractArchive(archive_path, options);
 	}
 	catch (std::invalid_argument& ex) {
 		if (*ex.what() != '\0') {
