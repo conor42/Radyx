@@ -30,7 +30,7 @@ www.gnu.org/licenses/gpl.html
 
 
 ===============================================================================
-    Radyx 0.9.2 Command Line
+    Radyx 0.9.3 Command Line
 ===============================================================================
 
 The command line format is 7-zip compatible wherever possible:

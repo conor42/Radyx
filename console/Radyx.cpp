@@ -48,9 +48,9 @@
 using namespace Radyx;
 
 static const char kProgName[] = "Radyx";
-static const char kVersion[] = "0.9.2 beta";
+static const char kVersion[] = "0.9.3 beta";
 static const char kCopyright[] = "  Copyright 2018 Conor McCarthy";
-static const char kReleaseDate[] = "  2018-02-07";
+static const char kReleaseDate[] = "  2018-02-28";
 static const char kLicense[] = "This software has NO WARRANTY and is released under the\nGNU General Public License: www.gnu.org/licenses/gpl.html\n";
 
 static const uint_least64_t kMinMemory = 512 * 1024 * 1024;
