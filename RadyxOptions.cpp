@@ -405,7 +405,7 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 		case 'c':
 		{
 			arg += (arg[1] == '=') + 1;
-			lzma2.match_cycles = ReadSimpleNumericParam(arg, 1, 1U << FL2_SEARCHLOG_MAX);
+			lzma2.match_cycles = ReadSimpleNumericParam(arg, 1, FL2_HYBRIDCYCLES_MAX);
 			break;
 		}
 		default:

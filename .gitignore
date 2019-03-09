@@ -219,3 +219,4 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 Windows/Radyx.v12.suo
+*.opendb

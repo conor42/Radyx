@@ -34,13 +34,20 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#ifdef RADYX_RANDOM_TEST
+#include <random>
+#endif
 #include "CharType.h"
-#include "UnitCompressor.h"
 #include "ArchiveCompressor.h"
 #include "Strings.h"
 #include "IoException.h"
+#include "fast-lzma2/fl2_errors.h"
 
 namespace Radyx {
+
+#ifdef RADYX_RANDOM_TEST
+extern uint_least64_t g_testSize = 64U << 20;
+#endif
 
 const _TCHAR ArchiveCompressor::extensions[] =
 _T("chm\0hxi\0hxs")
@@ -189,7 +196,7 @@ static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const Arch
 	return comp < 0;
 }
 
-uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
+uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 	const RadyxOptions& options,
 	OutputStream& out_stream)
 {
@@ -207,6 +214,26 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 	}
 	// Sort the file list by extension index then name
 	file_list.sort(CompareFileInfo);
+#ifdef RADYX_RANDOM_TEST
+    std::vector<FileInfo*> file_vec;
+    file_vec.reserve(file_list.size());
+    for (auto& fs : file_list) {
+        file_vec.push_back(&fs);
+    }
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    std::Tcerr << "Seed: " << li.LowPart << std::endl;
+    std::mt19937 gen(li.LowPart);
+    std::uniform_int_distribution<size_t> file_num(0, file_list.size() - 1);
+    uint_least64_t total = 0;
+    for (size_t i = 0; i < (file_list.size() << 3) && total < g_testSize; ++i) {
+        size_t index = file_num(gen);
+        if (!file_vec[index]->include) {
+            file_vec[index]->include = true;
+            total += file_vec[index]->size;
+        }
+    }
+#endif
 	auto it = file_list.begin();
 	DataUnit unit;
 	unit.out_file_pos = out_stream.tellp();
@@ -214,19 +241,15 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 	std::Tcerr << Strings::kFound_ << file_list.size();
 	std::Tcerr << (file_list.size() > 1 ? Strings::k_files : Strings::k_file) << std::endl;
 	unsigned exe_group = GetExtensionIndex(_T("exe"));
-	if (options.bcj_filter && it->ext_index >= exe_group) {
-		// Enable BCJ if starting with executables
-		unit_comp.Begin(true);
-	}
+    enc.Begin(options.bcj_filter && it->ext_index >= exe_group);
 	Progress progress(initial_total_bytes);
 	while (!g_break) {
 		unsigned ext_index = it->ext_index;
-		if(!AddFile(*it,
-			unit_comp,
-			options,
-			progress,
-			out_stream))
-		{
+#ifdef RADYX_RANDOM_TEST
+        if (!it->include || !AddFile(*it, enc, options, progress, out_stream)) {
+#else
+		if(!AddFile(*it, enc, options, progress, out_stream)) {
+#endif
 			auto old_it = it;
 			++it;
 			//Delete it from the file list if not read
@@ -257,17 +280,12 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 			// If any data was added, compress what remains and add the unit to the list
 			if (unit.unpack_size != 0) {
 				progress.Show();
-				unit_comp.Compress(out_stream, &progress);
-				unit.used_bcj = unit_comp.UsedBcj();
+                packed_size += enc.Finalize(out_stream, &progress);
+				unit.used_bcj = enc.UsedBcj();
 				if (unit.used_bcj) {
-					unit.bcj_info = unit_comp.GetBcjCoderInfo();
+					unit.bcj_info = enc.GetBcjCoderInfo();
 				}
-				// Wait for thread
-				unit_comp.WaitCompletion();
-				unit.coder_info = unit_comp.GetCoderInfo();
-				// Update total packed size
-				packed_size += unit_comp.Finalize(out_stream);
-				packed_size += unit_comp.GetPackSize();
+                unit.coder_info = enc.GetCoderInfo();
 				// Get final file position and the unit packed size
 				uint_least64_t out_file_pos = out_stream.tellp();
 				unit.pack_size = out_file_pos - unit.out_file_pos;
@@ -280,14 +298,12 @@ uint_least64_t ArchiveCompressor::Compress(UnitCompressor& unit_comp,
 				break;
 			}
 			// Reset the unit compressor, turning on BCJ if adding executables
-			unit_comp.Begin(options.bcj_filter && it->ext_index >= exe_group);
+            enc.Begin(options.bcj_filter && it->ext_index >= exe_group);
 			unit.file_count = 0;
 			unit.unpack_size = 0;
 		}
 	}
-	unit_comp.WaitCompletion();
-	progress.Erase();
-	unit_comp.CheckError();
+    progress.Erase();
 	// Warn if any files couldn't be read
 	if (!g_break && !file_warnings.empty()) {
 		if (!options.quiet_mode && !file_list.empty()) {
@@ -361,8 +377,8 @@ void ArchiveCompressor::DetectCollisions()
 }
 
 bool ArchiveCompressor::AddFile(FileInfo& fi,
-	UnitCompressor& unit_comp,
-	const RadyxOptions& options,
+    FastLzma2& enc,
+    const RadyxOptions& options,
 	Progress& progress,
 	OutputStream& out_stream)
 {
@@ -389,43 +405,33 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 		std::Tcerr << Strings::kAdding_ << (fi.dir.c_str() + fi.root) << fi.name.c_str() << std::endl;
 	}
 	fi.size = 0;
-	bool did_compress = false;
+	bool did_read = false;
 	while (!g_break) {
-		if (unit_comp.GetAvailableSpace() == 0) {
-			// Unit compressor is full so compress
-			progress.Show();
-			unit_comp.Compress(out_stream, &progress);
-			unit_comp.Shift();
-			did_compress = true;
-		}
-		unsigned long to_read = static_cast<unsigned long>(
-			std::min<size_t>(unit_comp.GetAvailableSpace(), ~0ul));
-		unsigned long read_count;
-		if (!reader.Read(unit_comp.GetAvailableBuffer(), to_read, read_count)) {
+        unsigned long size;
+        uint8_t* dst = enc.GetAvailableBuffer(size);
+        unsigned long read_count;
+		if (!reader.Read(dst, size, read_count)) {
 			// Read failure
-			if (did_compress) {
+			if (did_read) {
 				// Can't recover if some of the file was compressed to the output
 				throw IoException(Strings::kUnrecoverableErrorReading, fi.name.c_str());
 			}
 			const _TCHAR* os_msg = IoException::GetOsMessage();
-			std::unique_lock<std::mutex> lock(progress.GetMutex());
-			progress.RewindLocked();
 			file_warnings.emplace_back(Strings::kCannotRead_ + fi.dir + fi.name + _T(" : ") + os_msg);
 			std::Tcerr << file_warnings.back() << std::endl;
-			// Delete the data from the unit compressor's buffer
-			unit_comp.RemoveByteCount(static_cast<size_t>(fi.size));
-			// Adjust the total bytes to add
-			progress.Adjust(-static_cast<int_least64_t>(initial_size));
 			return false;
 		}
 		if (read_count == 0) {
 			break;
 		}
-		// Update the CRC
-		fi.crc32.Add(unit_comp.GetAvailableBuffer(), read_count);
+        // Update the CRC
+		fi.crc32.Add(dst, read_count);
 		// Update file size and the unit compressor's buffer pos
 		fi.size += read_count;
-		unit_comp.AddByteCount(read_count);
+
+        enc.AddByteCount(read_count, out_stream, &progress);
+
+        did_read = true;
 	}
 	// Adjust the total bytes to add if the size was different from when it was opened
 	if (fi.size != initial_size) {

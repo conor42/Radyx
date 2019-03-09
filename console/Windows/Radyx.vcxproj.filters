@@ -78,9 +78,6 @@
     <ClInclude Include="..\..\Strings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\UnitCompressor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\winlean.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -94,9 +91,6 @@
       <Filter>fast-lzma2</Filter>
     </ClInclude>
     <ClInclude Include="..\..\fast-lzma2\data_block.h">
-      <Filter>fast-lzma2</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\fast-lzma2\error_private.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
     <ClInclude Include="..\..\fast-lzma2\fast-lzma2.h">
@@ -126,9 +120,6 @@
     <ClInclude Include="..\..\fast-lzma2\platform.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\fast-lzma2\pool.h">
-      <Filter>fast-lzma2</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\fast-lzma2\radix_engine.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
@@ -141,9 +132,6 @@
     <ClInclude Include="..\..\fast-lzma2\range_enc.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\fast-lzma2\threading.h">
-      <Filter>fast-lzma2</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\fast-lzma2\util.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
@@ -151,6 +139,21 @@
       <Filter>fast-lzma2</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\dict_buffer.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fl2_error_private.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fl2_pool.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\fast-lzma2\fl2_threading.h">
+      <Filter>fast-lzma2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\FastLzma2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -194,14 +197,8 @@
     <ClCompile Include="..\..\Strings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\UnitCompressor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\Radyx.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\fast-lzma2\error_private.c">
-      <Filter>fast-lzma2</Filter>
     </ClCompile>
     <ClCompile Include="..\..\fast-lzma2\fl2_common.c">
       <Filter>fast-lzma2</Filter>
@@ -218,9 +215,6 @@
     <ClCompile Include="..\..\fast-lzma2\lzma2_enc.c">
       <Filter>fast-lzma2</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\fast-lzma2\pool.c">
-      <Filter>fast-lzma2</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\fast-lzma2\radix_bitpack.c">
       <Filter>fast-lzma2</Filter>
     </ClCompile>
@@ -233,13 +227,28 @@
     <ClCompile Include="..\..\fast-lzma2\range_enc.c">
       <Filter>fast-lzma2</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\fast-lzma2\threading.c">
-      <Filter>fast-lzma2</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\fast-lzma2\xxhash.c">
       <Filter>fast-lzma2</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\dict_buffer.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\util.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\fl2_error_private.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\fl2_pool.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fast-lzma2\fl2_threading.c">
+      <Filter>fast-lzma2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\FastLzma2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -39,13 +39,20 @@ BcjX86::BcjX86()
 {
 }
 
-size_t BcjX86::Transform(MutableDataBlock& block, bool encoding)
+size_t BcjX86::Transform(uint8_t* data_block, size_t end, bool encoding)
 {
-	size_t index = block.start;
-	size_t offset_ip = ip + 5 - index;
-	size_t prev_index = index - 1;
-	uint8_t* data_block = block.data;
-	size_t end = block.end;
+    if (encoding)
+        return Transform<true>(data_block, end);
+    else
+        return Transform<false>(data_block, end);
+}
+
+template<bool encoding>
+size_t BcjX86::Transform(uint8_t* data_block, size_t end)
+{
+	size_t index = 0;
+	size_t offset_ip = ip + 5;
+	size_t prev_index = (size_t)-1;
 	size_t limit = end - 4;
 	for (;;)
 	{
@@ -111,7 +118,7 @@ size_t BcjX86::Transform(MutableDataBlock& block, bool encoding)
 	}
 	ip = offset_ip - 5 + index;
 	prev_mask = ((prev_index > 3) ? 0 : ((prev_mask << (prev_index - 1)) & 0x7));
-	return index;
+	return end - index;
 }
 
 void BcjX86::Reset()

@@ -35,22 +35,23 @@
     <ClInclude Include="..\..\fast-lzma2\compiler.h" />
     <ClInclude Include="..\..\fast-lzma2\count.h" />
     <ClInclude Include="..\..\fast-lzma2\data_block.h" />
-    <ClInclude Include="..\..\fast-lzma2\error_private.h" />
+    <ClInclude Include="..\..\fast-lzma2\dict_buffer.h" />
     <ClInclude Include="..\..\fast-lzma2\fast-lzma2.h" />
     <ClInclude Include="..\..\fast-lzma2\fastpos_table.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_compress_internal.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_errors.h" />
+    <ClInclude Include="..\..\fast-lzma2\fl2_error_private.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_internal.h" />
+    <ClInclude Include="..\..\fast-lzma2\fl2_pool.h" />
+    <ClInclude Include="..\..\fast-lzma2\fl2_threading.h" />
     <ClInclude Include="..\..\fast-lzma2\lzma2_dec.h" />
     <ClInclude Include="..\..\fast-lzma2\lzma2_enc.h" />
     <ClInclude Include="..\..\fast-lzma2\mem.h" />
     <ClInclude Include="..\..\fast-lzma2\platform.h" />
-    <ClInclude Include="..\..\fast-lzma2\pool.h" />
     <ClInclude Include="..\..\fast-lzma2\radix_engine.h" />
     <ClInclude Include="..\..\fast-lzma2\radix_internal.h" />
     <ClInclude Include="..\..\fast-lzma2\radix_mf.h" />
     <ClInclude Include="..\..\fast-lzma2\range_enc.h" />
-    <ClInclude Include="..\..\fast-lzma2\threading.h" />
     <ClInclude Include="..\..\fast-lzma2\util.h" />
     <ClInclude Include="..\..\fast-lzma2\xxhash.h" />
     <ClInclude Include="..\..\IoException.h" />
@@ -62,7 +63,7 @@
     <ClInclude Include="..\..\RadyxOptions.h" />
     <ClInclude Include="..\..\Strings.h" />
     <ClInclude Include="..\..\Thread.h" />
-    <ClInclude Include="..\..\UnitCompressor.h" />
+    <ClInclude Include="..\..\FastLzma2.h" />
     <ClInclude Include="..\..\winlean.h" />
   </ItemGroup>
   <ItemGroup>
@@ -73,18 +74,20 @@
     <ClCompile Include="..\..\Container7z.cpp" />
     <ClCompile Include="..\..\Crc32.cpp" />
     <ClCompile Include="..\..\DirScanner.cpp" />
-    <ClCompile Include="..\..\fast-lzma2\error_private.c" />
+    <ClCompile Include="..\..\fast-lzma2\dict_buffer.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_common.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_compress.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_decompress.c" />
+    <ClCompile Include="..\..\fast-lzma2\fl2_error_private.c" />
+    <ClCompile Include="..\..\fast-lzma2\fl2_pool.c" />
+    <ClCompile Include="..\..\fast-lzma2\fl2_threading.c" />
     <ClCompile Include="..\..\fast-lzma2\lzma2_dec.c" />
     <ClCompile Include="..\..\fast-lzma2\lzma2_enc.c" />
-    <ClCompile Include="..\..\fast-lzma2\pool.c" />
     <ClCompile Include="..\..\fast-lzma2\radix_bitpack.c" />
     <ClCompile Include="..\..\fast-lzma2\radix_mf.c" />
     <ClCompile Include="..\..\fast-lzma2\radix_struct.c" />
     <ClCompile Include="..\..\fast-lzma2\range_enc.c" />
-    <ClCompile Include="..\..\fast-lzma2\threading.c" />
+    <ClCompile Include="..\..\fast-lzma2\util.c" />
     <ClCompile Include="..\..\fast-lzma2\xxhash.c" />
     <ClCompile Include="..\..\IoException.cpp" />
     <ClCompile Include="..\..\OutputFile.cpp" />
@@ -93,7 +96,7 @@
     <ClCompile Include="..\..\RadyxOptions.cpp" />
     <ClCompile Include="..\..\Strings.cpp" />
     <ClCompile Include="..\..\Thread.cpp" />
-    <ClCompile Include="..\..\UnitCompressor.cpp" />
+    <ClCompile Include="..\..\FastLzma2.cpp" />
     <ClCompile Include="..\Radyx.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -178,7 +181,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>RMF_CHECK_INTEGRITY;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RADYX_RANDOM_TEST;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile />
     </ClCompile>
     <Link>
@@ -218,7 +221,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RADYX_RANDOM_TEST;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>..\stdafx.h</PrecompiledHeaderFile>
       <CallingConvention>Cdecl</CallingConvention>
       <BufferSecurityCheck>false</BufferSecurityCheck>

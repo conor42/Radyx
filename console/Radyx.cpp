@@ -121,7 +121,7 @@ int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 			avail_mem = msx.ullAvailPhys;
 		}
 #endif
-		UnitCompressor unit_comp(options, false);
+		FastLzma2 unit_comp(options);
 		ArchiveCompressor ar_comp;
 		std::Tcerr << Strings::kSearching;
 		options.GetFiles(ar_comp);

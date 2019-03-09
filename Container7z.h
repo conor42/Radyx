@@ -30,7 +30,6 @@
 #define RADYX_CONTAINER_7Z_H
 
 #include "ArchiveCompressor.h"
-#include "UnitCompressor.h"
 #include "CompressedUint64.h"
 #include "OutputFile.h"
 #include "CharType.h"
@@ -42,7 +41,7 @@ class Container7z
 public:
 	static void ReserveSignatureHeader(OutputStream& out_stream);
 	static uint_least64_t WriteDatabase(const ArchiveCompressor& arch_comp,
-		UnitCompressor& unit_comp,
+		FastLzma2& unit_comp,
 		OutputStream& out_stream);
 
 private:
@@ -78,10 +77,7 @@ private:
 	class Writer
 	{
 	public:
-		Writer(UnitCompressor& unit_comp_, OutputStream& out_stream_, bool compress_)
-			: unit_comp(unit_comp_),
-			out_stream(out_stream_),
-            compress(compress_) {}
+        Writer(FastLzma2& unit_comp_, OutputStream& out_stream_, bool compress_);
 		~Writer() { Flush(); }
 		inline void WriteByte(uint8_t byte);
 		inline void WriteBytes(const uint8_t* buf, size_t count);
@@ -93,7 +89,7 @@ private:
 		uint_fast32_t GetCrc32() const { return crc32; }
 
 	private:
-		UnitCompressor& unit_comp;
+		FastLzma2& unit_comp;
 		OutputStream& out_stream;
 		Crc32 crc32;
         bool compress;
@@ -142,14 +138,13 @@ private:
 		WriterFunc write_func,
 		Writer& writer);
 	static void WriteHeader(const ArchiveCompressor& arch_comp,
-		UnitCompressor& unit_comp,
+		FastLzma2& unit_comp,
 		OutputStream& out_stream);
-	static uint_fast32_t WriteHeaderHeader(UnitCompressor& unit_comp,
-		uint_least64_t header_offset,
+	static void WriteHeaderHeader(Writer& writer,
+        uint_least64_t header_offset,
 		uint_least64_t header_pack_size,
 		uint_least64_t header_unpack_size,
-        CoderInfo& coder_info,
-		OutputStream& out_stream);
+        CoderInfo& coder_info);
 	static void WriteSignatureHeader(uint_least64_t header_offset,
 		uint_least64_t header_size,
 		uint_fast32_t crc32,
@@ -178,16 +173,6 @@ void Container7z::BoolWriter::Flush()
 		mask = 0x80;
 		value = 0;
 	}
-}
-
-void Container7z::Writer::WriteByte(uint8_t byte)
-{
-	if (unit_comp.GetAvailableSpace() == 0) {
-		Flush();
-	}
-	unit_comp.GetAvailableBuffer()[0] = byte;
-	unit_comp.AddByteCount(1);
-	crc32.Add(byte);
 }
 
 void Container7z::Writer::WriteBytes(const uint8_t* buf, size_t count)

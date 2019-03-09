@@ -36,7 +36,7 @@ public:
 	static const size_t kMaxUnprocessed = 4;
 
 	virtual inline ~BcjTransform();
-	virtual size_t Transform(MutableDataBlock& block, bool encoding) = 0;
+	virtual size_t Transform(uint8_t* data_block, size_t end, bool encoding) = 0;
 	virtual void Reset() = 0;
 	virtual CoderInfo GetCoderInfo() const = 0;
 };

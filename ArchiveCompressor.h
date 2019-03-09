@@ -32,8 +32,9 @@
 #include "OutputFile.h"
 #include "Path.h"
 #include "OptionalSetting.h"
-#include "UnitCompressor.h"
 #include "Crc32.h"
+#include "CoderInfo.h"
+#include "FastLzma2.h"
 
 namespace Radyx {
 
@@ -54,6 +55,9 @@ public:
 		OptionalSetting<uint_fast32_t> attributes;
 		unsigned ext_index;
 		Crc32 crc32;
+#ifdef RADYX_RANDOM_TEST
+        bool include;
+#endif
 		FileInfo(const Path& path_, const _TCHAR* name_, size_t root_, uint_least64_t size_)
 			: dir(path_),
 			name(name_),
@@ -63,7 +67,10 @@ public:
 			creat_time(0),
 			mod_time(0),
 			attributes(0),
-			ext_index(GetExtensionIndex(name_ + ext)) {}
+#ifdef RADYX_RANDOM_TEST
+            include(false),
+#endif
+        ext_index(GetExtensionIndex(name_ + ext)) {}
 		bool IsEmpty() const { return size == 0; }
 		FileInfo& operator=(const FileInfo&) = delete;
 	};
@@ -107,7 +114,7 @@ public:
 
 	ArchiveCompressor();
 	void Add(const _TCHAR* path, size_t root, uint_least64_t size);
-	uint_least64_t Compress(UnitCompressor& unit_comp,
+	uint_least64_t Compress(FastLzma2& enc,
 		const RadyxOptions& options,
 		OutputStream& out_stream);
 	const std::list<FileInfo>& GetFileList() const { return file_list; }
@@ -120,8 +127,8 @@ private:
 
 	void EliminateDuplicates();
 	void DetectCollisions();
-	bool AddFile(FileInfo& fi,
-		UnitCompressor& unit_comp,
+    bool AddFile(FileInfo& fi,
+        FastLzma2& enc,
 		const RadyxOptions& options,
 		Progress& progress,
 		OutputStream& out_stream);

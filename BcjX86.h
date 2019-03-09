@@ -37,7 +37,7 @@ class BcjX86 : public BcjTransform
 {
 public:
 	BcjX86();
-	size_t Transform(MutableDataBlock& block, bool encoding);
+	size_t Transform(uint8_t* data_block, size_t end, bool encoding);
 	void Reset();
 	CoderInfo GetCoderInfo() const;
 
@@ -45,7 +45,10 @@ private:
 	static const bool kMaskToAllowedStatus[8];
 	static const uint8_t kMaskToBitNumber[8];
 
-	inline bool Test86MSByte(uint8_t b) const {
+    template<bool encoding>
+    size_t Transform(uint8_t* data_block, size_t end);
+    
+    inline bool Test86MSByte(uint8_t b) const {
 		return uint8_t(b + 1) < 2;
 	}
 
