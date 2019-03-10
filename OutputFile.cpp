@@ -38,9 +38,7 @@ OutputFile::OutputFile()
 
 OutputFile::~OutputFile()
 {
-	if (handle != INVALID_HANDLE_VALUE) {
-		CloseHandle(handle);
-	}
+    close();
 }
 
 OutputFile::OutputFile(const _TCHAR* filename)
@@ -104,6 +102,14 @@ OutputFile& OutputFile::seekp(uint_least64_t pos)
 		AddError(std::ios_base::badbit);
 	}
 	return *this;
+}
+
+void OutputFile::close()
+{
+    if (handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(handle);
+        handle = INVALID_HANDLE_VALUE;
+    }
 }
 
 std::ios::iostate OutputFile::exceptions() const

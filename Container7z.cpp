@@ -297,7 +297,8 @@ void Container7z::WriteHeader(const ArchiveCompressor& arch_comp,
 	FastLzma2& unit_comp,
 	OutputStream& out_stream)
 {
-	Writer writer(unit_comp, out_stream, true);
+    unit_comp.SetTimeout(0);
+    Writer writer(unit_comp, out_stream, true);
 	writer.WriteByte(kHeader);
 	// Archive properties
 	if (arch_comp.GetUnitList().size() != 0) {

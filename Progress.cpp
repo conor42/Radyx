@@ -29,6 +29,7 @@ namespace Radyx {
 
 Progress::Progress(uint_least64_t total_bytes_)
 	: total_bytes(total_bytes_),
+    prev_done(0),
 	progress_bytes(0),
 	next_update(total_bytes_ / 100),
 	display_length(0)
@@ -66,16 +67,22 @@ void Progress::RewindLocked()
 	}
 }
 
-void Progress::Update(size_t bytes_done)
+void Progress::Update(uint_least64_t bytes_done)
 {
-	uint_least64_t progress = progress_bytes.fetch_add(bytes_done);
-	if (progress >= next_update) {
+    progress_bytes = prev_done + bytes_done;
+	if (bytes_done >= next_update) {
 		std::unique_lock<std::mutex> lock(mtx);
-		if (progress >= next_update) {
+		if (bytes_done >= next_update) {
 			uint_least64_t percent = ShowLocked() + 1;
 			next_update = total_bytes * percent / 100;
 		}
 	}
+}
+
+void Progress::AddUnit(uint_least64_t unit_size)
+{
+    prev_done += unit_size;
+    progress_bytes = prev_done;
 }
 
 }

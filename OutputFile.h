@@ -47,6 +47,7 @@ public:
 	OutputFile& write(const char* s, size_t n);
 	uint_least64_t tellp();
 	OutputFile& seekp(uint_least64_t pos);
+    void close();
 	std::ios_base::iostate exceptions() const;
 	void exceptions(std::ios_base::iostate except);
 	bool fail() const;

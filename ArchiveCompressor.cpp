@@ -46,7 +46,7 @@
 namespace Radyx {
 
 #ifdef RADYX_RANDOM_TEST
-extern uint_least64_t g_testSize = 64U << 20;
+extern uint_least64_t g_testSize = 256U << 20;
 #endif
 
 const _TCHAR ArchiveCompressor::extensions[] =
@@ -196,6 +196,24 @@ static bool CompareFileInfo(const ArchiveCompressor::FileInfo& first, const Arch
 	return comp < 0;
 }
 
+void ArchiveCompressor::PrepareFileList(const RadyxOptions& options)
+{
+    if (file_list.size() == 0)
+        return;
+
+    EliminateDuplicates();
+    if (options.store_full_paths) {
+        for (auto& fs : file_list) {
+            fs.root = 0;
+        }
+    }
+    else {
+        DetectCollisions();
+    }
+    // Sort the file list by extension index then name
+    file_list.sort(CompareFileInfo);
+}
+
 uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 	const RadyxOptions& options,
 	OutputStream& out_stream)
@@ -203,37 +221,37 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 	if (file_list.size() == 0) {
 		return 0;
 	}
-	EliminateDuplicates();
-	if (options.store_full_paths) {
-		for (auto& fs : file_list) {
-			fs.root = 0;
-		}
-	}
-	else {
-		DetectCollisions();
-	}
-	// Sort the file list by extension index then name
-	file_list.sort(CompareFileInfo);
 #ifdef RADYX_RANDOM_TEST
     std::vector<FileInfo*> file_vec;
     file_vec.reserve(file_list.size());
     for (auto& fs : file_list) {
         file_vec.push_back(&fs);
+        fs.include = false;
     }
     LARGE_INTEGER li;
     QueryPerformanceCounter(&li);
     std::Tcerr << "Seed: " << li.LowPart << std::endl;
     std::mt19937 gen(li.LowPart);
-    std::uniform_int_distribution<size_t> file_num(0, file_list.size() - 1);
+    std::uniform_int_distribution<size_t> file_num(0, file_vec.size() - 1);
     uint_least64_t total = 0;
-    for (size_t i = 0; i < (file_list.size() << 3) && total < g_testSize; ++i) {
+    for (size_t i = 0; i < (file_vec.size() << 3) && total < g_testSize; ++i) {
         size_t index = file_num(gen);
-        if (!file_vec[index]->include) {
+        if (!file_vec[index]->include && file_vec[index]->size <= g_testSize) {
             file_vec[index]->include = true;
             total += file_vec[index]->size;
         }
     }
+    file_list_copy = std::move(file_list);
+    file_list = std::list<FileInfo>();
+    initial_total_bytes = 0;
+    for (auto& fs : file_list_copy) {
+        if (fs.include) {
+            file_list.push_back(fs);
+            initial_total_bytes += fs.size;
+        }
+    }
 #endif
+    enc.SetTimeout(500);
 	auto it = file_list.begin();
 	DataUnit unit;
 	unit.out_file_pos = out_stream.tellp();
@@ -245,11 +263,7 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 	Progress progress(initial_total_bytes);
 	while (!g_break) {
 		unsigned ext_index = it->ext_index;
-#ifdef RADYX_RANDOM_TEST
-        if (!it->include || !AddFile(*it, enc, options, progress, out_stream)) {
-#else
 		if(!AddFile(*it, enc, options, progress, out_stream)) {
-#endif
 			auto old_it = it;
 			++it;
 			//Delete it from the file list if not read
@@ -299,7 +313,8 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 			}
 			// Reset the unit compressor, turning on BCJ if adding executables
             enc.Begin(options.bcj_filter && it->ext_index >= exe_group);
-			unit.file_count = 0;
+            progress.AddUnit(unit.unpack_size);
+            unit.file_count = 0;
 			unit.unpack_size = 0;
 		}
 	}
@@ -318,7 +333,7 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 			<< (file_warnings.size() > 1 ? Strings::k_files : Strings::k_file)
 			<< std::endl;
 	}
-	return packed_size;
+    return packed_size;
 }
 
 void ArchiveCompressor::EliminateDuplicates()
@@ -475,5 +490,16 @@ size_t ArchiveCompressor::GetNameLengthTotal() const
 	}
 	return total;
 }
+
+#ifdef RADYX_RANDOM_TEST
+
+void ArchiveCompressor::RestoreFileList()
+{
+    file_list = std::move(file_list_copy);
+    unit_list.clear();
+    file_warnings.clear();
+}
+
+#endif
 
 }

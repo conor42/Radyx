@@ -113,6 +113,7 @@ public:
 	};
 
 	ArchiveCompressor();
+    void PrepareFileList(const RadyxOptions& options);
 	void Add(const _TCHAR* path, size_t root, uint_least64_t size);
 	uint_least64_t Compress(FastLzma2& enc,
 		const RadyxOptions& options,
@@ -121,6 +122,9 @@ public:
 	const std::list<DataUnit>& GetUnitList() const { return unit_list; }
 	size_t GetEmptyFileCount() const;
 	size_t GetNameLengthTotal() const;
+#ifdef RADYX_RANDOM_TEST
+    void RestoreFileList();
+#endif
 
 private:
 	static const _TCHAR extensions[];
@@ -133,6 +137,9 @@ private:
 		Progress& progress,
 		OutputStream& out_stream);
 	static unsigned GetExtensionIndex(const _TCHAR* ext);
+#ifdef RADYX_RANDOM_TEST
+    std::list<FileInfo> file_list_copy;
+#endif
 
 	std::list<FileInfo> file_list;
 	std::list<DataUnit> unit_list;

@@ -41,6 +41,7 @@ class FastLzma2
 public:
 	FastLzma2(RadyxOptions& options);
 	~FastLzma2();
+    void SetTimeout(unsigned ms);
 	void Begin(bool do_bcj);
     uint8_t* GetAvailableBuffer(unsigned long& size);
     void AddByteCount(size_t count, OutputStream& out_stream, Progress* progress);

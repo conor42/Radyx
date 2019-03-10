@@ -80,6 +80,11 @@ FastLzma2::~FastLzma2()
 	FL2_freeCCtx(fcs);
 }
 
+void FastLzma2::SetTimeout(unsigned ms)
+{
+    FL2_setCStreamTimeout(fcs, ms);
+}
+
 void FastLzma2::Begin(bool do_bcj)
 {
 	unpack_size = 0;
@@ -142,13 +147,18 @@ void FastLzma2::AddByteCount(size_t count, OutputStream & out_stream, Progress* 
             if (res != 0)
                 WriteBuffers(out_stream);
         }
-        CheckError(FL2_getDictionaryBuffer(fcs, &dict));
+        do {
+            res = FL2_getDictionaryBuffer(fcs, &dict);
+        } while (FL2_isTimedOut(res));
+        CheckError(res);
         dict_pos = 0;
         if (bcj_trim != 0) {
             dict_pos = bcj_trim;
             memcpy(dict.dst, bcj_cache, bcj_trim);
             bcj_trim = 0;
         }
+        if (progress)
+            progress->Update(FL2_getCStreamProgress(fcs, nullptr));
     }
 }
 
@@ -197,7 +207,7 @@ uint_least64_t FastLzma2::Finalize(OutputStream& out_stream, Progress* progress)
     }
 
     size_t res = FL2_endStream(fcs, nullptr);
-    CheckError(res);
+    res = WaitAndReport(res, progress);
     while (res) {
         WriteBuffers(out_stream);
         res = FL2_endStream(fcs, nullptr);

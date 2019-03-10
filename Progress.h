@@ -41,7 +41,8 @@ public:
 	inline void Rewind();
 	void RewindLocked();
 	inline void Erase();
-    void Update(size_t bytes_done);
+    void Update(uint_least64_t bytes_done);
+    void AddUnit(uint_least64_t unit_size);
     inline void Adjust(int_least64_t size_change);
 	inline std::mutex& GetMutex() { return mtx; }
 
@@ -49,8 +50,9 @@ private:
 	unsigned ShowLocked();
 
 	uint_least64_t total_bytes;
-	std::atomic_uint_fast64_t progress_bytes;
-	volatile uint_least64_t next_update;
+    uint_least64_t prev_done;
+    uint_least64_t progress_bytes;
+	uint_least64_t next_update;
 	std::mutex mtx;
 	int display_length;
 

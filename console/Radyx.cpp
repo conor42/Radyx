@@ -62,7 +62,7 @@ void RADYX_CDECL SignalHandler(int)
 	g_break = true;
 }
 
-void PrintBanner()
+static void PrintBanner()
 {
 	std::Tcerr << kProgName
 		<< ((sizeof(void*) > 4) ? " (x64) " : " (x86) ")
@@ -74,7 +74,7 @@ void PrintBanner()
 		<< std::endl;
 }
 
-bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, OutputFile& file_stream, uint_least64_t avail_mem)
+static bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, OutputFile& file_stream, uint_least64_t avail_mem)
 {
 	bool is_dev_null = archive_path.IsDevNull();
 #ifdef _WIN32
@@ -103,6 +103,32 @@ bool OpenOutputStream(const Path& archive_path, const RadyxOptions& options, Out
 		throw IoException(Strings::kCannotCreateArchive, archive_path.c_str());
 	}
 	return !is_dev_null;
+}
+
+static bool TestAndDeleteArchive(Path& archive_path)
+{
+    _TCHAR cmd[MAX_PATH];
+    swprintf_s(cmd, _T("e:\\7za.exe t %s"), archive_path.c_str());
+    PROCESS_INFORMATION pi;
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.lpReserved = 0;
+    si.lpDesktop = 0;
+    si.lpTitle = 0;
+    si.cbReserved2 = 0;
+    si.lpReserved2 = 0;
+    CreateProcess(0, cmd,
+        0, 0, 0, 0, 0, 0, &si, &pi);
+    WaitForSingleObject(pi.hProcess, 30 * 60000);
+    DWORD exit_code;
+    GetExitCodeProcess(pi.hProcess, &exit_code);
+    if (exit_code != 0) {
+        std::Tcerr << _T("Error") << std::endl;
+        return false;
+    }
+    _tremove(archive_path.c_str());
+    return true;
 }
 
 int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
@@ -136,25 +162,42 @@ int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 			return EXIT_SUCCESS;
 		}
 		avail_mem -= unit_comp.GetMemoryUsage();
-		OutputFile out_stream;
-		created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
-		Container7z::ReserveSignatureHeader(out_stream);
+        ar_comp.PrepareFileList(options);
 #ifdef _WIN32
-		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 #else
-		if(nice(1) < 0) {
-		}
+        if (nice(1) < 0) {
+        }
 #endif
-		uint_least64_t packed = ar_comp.Compress(unit_comp, options, out_stream);
-		if (ar_comp.GetFileList().size() != 0 && !g_break) {
-			packed += Container7z::WriteDatabase(ar_comp, unit_comp, out_stream);
-			if (!created_file) {
-				std::Tcerr << "Compressed size: " << packed << " bytes" << std::endl;
-			}
-			std::Tcerr << Strings::kDone << std::endl;
-			return EXIT_SUCCESS;
-		}
-	}
+#ifdef RADYX_RANDOM_TEST
+        std::Tcerr << _T("Random file selector/tester") << std::endl;
+        for(int i = 0; i < 1000 && !g_break; ++i)
+#endif
+        {
+            OutputFile out_stream;
+            created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
+            Container7z::ReserveSignatureHeader(out_stream);
+            uint_least64_t packed = ar_comp.Compress(unit_comp, options, out_stream);
+            if (ar_comp.GetFileList().size() != 0 && !g_break) {
+                packed += Container7z::WriteDatabase(ar_comp, unit_comp, out_stream);
+                if (!created_file) {
+                    std::Tcerr << "Compressed size: " << packed << " bytes" << std::endl;
+                }
+                std::Tcerr << Strings::kDone << std::endl;
+#ifdef RADYX_RANDOM_TEST
+                out_stream.close();
+                if(!TestAndDeleteArchive(archive_path))
+                    return EXIT_FAILURE;
+                ar_comp.RestoreFileList();
+#else
+                return EXIT_SUCCESS;
+#endif
+            }
+        }
+#ifdef RADYX_RANDOM_TEST
+        return EXIT_SUCCESS;
+#endif
+    }
 	catch (std::invalid_argument& ex) {
 		if (*ex.what() != '\0') {
 			std::Tcerr << Strings::kErrorCol_ << ex.what() << std::endl;
