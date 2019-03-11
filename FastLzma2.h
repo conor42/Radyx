@@ -41,6 +41,7 @@ class FastLzma2
 public:
 	FastLzma2(RadyxOptions& options);
 	~FastLzma2();
+    void SetOptions(Lzma2Options& lzma2);
     void SetTimeout(unsigned ms);
 	void Begin(bool do_bcj);
     uint8_t* GetAvailableBuffer(unsigned long& size);
@@ -49,7 +50,7 @@ public:
     uint_least64_t Finalize(OutputStream& out_stream, Progress* progress);
     void IncBufferCount(OutputStream& out_stream);
     void Write(OutputStream& out_stream);
-    inline void WaitCompletion();
+    void Cancel();
 	size_t GetUnpackSize() const { return unpack_size; }
 	size_t GetPackSize() const { return pack_size; }
 	bool UsedBcj() const { return bcj.get() != nullptr; }
@@ -73,14 +74,6 @@ private:
 	FastLzma2(const FastLzma2&) = delete;
 	FastLzma2& operator=(const FastLzma2&) = delete;
 };
-
-void FastLzma2::WaitCompletion()
-{
-    size_t res;
-    do {
-        res = FL2_waitStream(fcs);
-    } while (FL2_isTimedOut(res));
-}
 
 }
 

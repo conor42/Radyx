@@ -713,6 +713,9 @@ void RadyxOptions::GetFiles(ArchiveCompressor& arch_comp)
 		return first.path.FsCompare(0, first.name, second.path, 0, first.name) < 0;
 	});
 	for (auto it = file_specs.cbegin(); it != file_specs.cend();) {
+        if (g_break)
+            throw std::runtime_error(Strings::kBreakSignaled);
+
 		auto end = it;
 		// Find all file specs in the same dir
 		for (++end; end != file_specs.cend()

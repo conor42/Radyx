@@ -115,6 +115,8 @@ void Container7z::Writer::Flush()
 	}
 	else {
 		unit_comp.Write(out_stream);
+        // Need to cancel since we're only using it as a buffer
+        unit_comp.Cancel();
 	}
 }
 
@@ -286,9 +288,7 @@ uint_least64_t Container7z::WriteDatabase(const ArchiveCompressor& arch_comp,
 		packed_size += unit_comp.GetPackSize() + kSignatureHeaderSize;
 	}
 	catch (std::ios_base::failure&) {
-		if (!g_break) {
-			throw IoException(Strings::kCannotWriteArchive, _T(""));
-		}
+        throw IoException(Strings::kCannotWriteArchive, _T(""));
 	}
 	return packed_size;
 }

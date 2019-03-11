@@ -45,39 +45,60 @@ FastLzma2::FastLzma2(RadyxOptions& options)
     fcs = FL2_createCStreamMt(options.thread_count, options.async_read);
     if (fcs == nullptr)
         throw std::bad_alloc();
-	if (options.lzma2.encoder_mode == 3)
-		FL2_CStream_setParameter(fcs, FL2_p_highCompression, 1);
-	FL2_CStream_setParameter(fcs, FL2_p_compressionLevel, options.lzma2.compress_level);
-    if (options.lzma2.dictionary_size.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_dictionarySize, options.lzma2.dictionary_size);
-    if (options.lzma2.match_buffer_log.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_bufferLog, options.lzma2.match_buffer_log);
-    if (options.lzma2.divide_and_conquer.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_divideAndConquer, options.lzma2.divide_and_conquer);
-    unsigned overlap_fraction = options.lzma2.block_overlap;
-    if (!options.lzma2.block_overlap.IsSet())
-        overlap_fraction = unsigned(FL2_CCtx_getParameter(fcs, FL2_p_overlapFraction));
-    FL2_CStream_setParameter(fcs, FL2_p_overlapFraction, overlap_fraction);
-    if (options.lzma2.search_depth.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_searchDepth, options.lzma2.search_depth);
-    if (options.lzma2.second_dict_size.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_chainLog, ValueToLog(options.lzma2.second_dict_size, FL2_CHAINLOG_MIN));
-    if (options.lzma2.encoder_mode.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_strategy, std::min(static_cast<unsigned>(options.lzma2.encoder_mode), 2U));
-	if (options.lzma2.fast_length.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_fastLength, options.lzma2.fast_length);
-    if (options.lzma2.match_cycles.IsSet())
-        FL2_CStream_setParameter(fcs, FL2_p_hybridCycles, options.lzma2.match_cycles);
-    FL2_CStream_setParameter(fcs, FL2_p_literalCtxBits, options.lzma2.lc);
-    FL2_CStream_setParameter(fcs, FL2_p_literalPosBits, options.lzma2.lp);
-    FL2_CStream_setParameter(fcs, FL2_p_posBits, options.lzma2.pb);
-    FL2_CStream_setParameter(fcs, FL2_p_omitProperties, 1);
-    FL2_CStream_setParameter(fcs, FL2_p_doXXHash, 0);
+    SetOptions(options.lzma2);
 }
 
 FastLzma2::~FastLzma2()
 {
 	FL2_freeCCtx(fcs);
+}
+
+#ifdef RADYX_RANDOM_TEST
+
+static void ReportError(size_t err)
+{
+    if (FL2_isError(err))
+        std::Tcerr << _T("Bad parameter") << std::endl;
+}
+
+#else
+
+static void ReportError(size_t)
+{
+}
+
+#endif
+
+void FastLzma2::SetOptions(Lzma2Options & lzma2)
+{
+    if (lzma2.encoder_mode == 3)
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_highCompression, 1));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_compressionLevel, lzma2.compress_level));
+    if (lzma2.dictionary_size.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_dictionarySize, lzma2.dictionary_size));
+    if (lzma2.match_buffer_log.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_bufferLog, lzma2.match_buffer_log));
+    if (lzma2.divide_and_conquer.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_divideAndConquer, lzma2.divide_and_conquer));
+    unsigned overlap_fraction = lzma2.block_overlap;
+    if (!lzma2.block_overlap.IsSet())
+        overlap_fraction = unsigned(FL2_CCtx_getParameter(fcs, FL2_p_overlapFraction));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_overlapFraction, overlap_fraction));
+    if (lzma2.search_depth.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_searchDepth, lzma2.search_depth));
+    if (lzma2.second_dict_size.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_chainLog, ValueToLog(lzma2.second_dict_size, FL2_CHAINLOG_MIN)));
+    if (lzma2.encoder_mode.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_strategy, std::min(static_cast<unsigned>(lzma2.encoder_mode), 2U)));
+    if (lzma2.fast_length.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_fastLength, lzma2.fast_length));
+    if (lzma2.match_cycles.IsSet())
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_hybridCycles, lzma2.match_cycles));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_literalCtxBits, lzma2.lc));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_literalPosBits, lzma2.lp));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_posBits, lzma2.pb));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_omitProperties, 1));
+    ReportError(FL2_CStream_setParameter(fcs, FL2_p_doXXHash, 0));
 }
 
 void FastLzma2::SetTimeout(unsigned ms)
@@ -113,11 +134,13 @@ uint8_t* FastLzma2::GetAvailableBuffer(unsigned long& size)
 size_t FastLzma2::WaitAndReport(size_t res, Progress* progress)
 {
     while (FL2_isTimedOut(res)) {
-        if (g_break)
-            return 0;
+        if (g_break) {
+            FL2_cancelCStream(fcs);
+            throw std::runtime_error(Strings::kBreakSignaled);
+        }
         if(progress)
             progress->Update(FL2_getCStreamProgress(fcs, nullptr));
-        res = FL2_waitStream(fcs);
+        res = FL2_waitCStream(fcs);
     }
     CheckError(res);
     return res;
@@ -157,9 +180,9 @@ void FastLzma2::AddByteCount(size_t count, OutputStream & out_stream, Progress* 
             memcpy(dict.dst, bcj_cache, bcj_trim);
             bcj_trim = 0;
         }
-        if (progress)
-            progress->Update(FL2_getCStreamProgress(fcs, nullptr));
     }
+    if (progress)
+        progress->Update(FL2_getCStreamProgress(fcs, nullptr));
 }
 
 void FastLzma2::CheckError(size_t res)
@@ -182,6 +205,8 @@ void FastLzma2::WriteBuffers(OutputStream& out_stream)
         // Waits if compression in progress
         csize = FL2_getNextCStreamBuffer(fcs, &cbuf);
         CheckError(csize);
+        if (g_break)
+            throw std::runtime_error(Strings::kBreakSignaled);
         if (csize == 0)
             break;
         out_stream.write(reinterpret_cast<const char*>(cbuf.src), cbuf.size);
@@ -231,6 +256,11 @@ void FastLzma2::Write(OutputStream & out_stream)
     if (out_stream.fail())
         throw IoException(Strings::kCannotWriteArchive, _T(""));
     dict_pos = 0;
+}
+
+void FastLzma2::Cancel()
+{
+    FL2_cancelCStream(fcs);
 }
 
 }

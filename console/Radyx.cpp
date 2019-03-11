@@ -105,10 +105,12 @@ static bool OpenOutputStream(const Path& archive_path, const RadyxOptions& optio
 	return !is_dev_null;
 }
 
+#ifdef RADYX_RANDOM_TEST
+
 static bool TestAndDeleteArchive(Path& archive_path)
 {
     _TCHAR cmd[MAX_PATH];
-    swprintf_s(cmd, _T("e:\\7za.exe t %s"), archive_path.c_str());
+    swprintf_s(cmd, _T("e:\\7z.exe t -mmt=1 %s"), archive_path.c_str());
     PROCESS_INFORMATION pi;
     STARTUPINFO si;
     ZeroMemory(&si, sizeof(si));
@@ -130,6 +132,8 @@ static bool TestAndDeleteArchive(Path& archive_path)
     _tremove(archive_path.c_str());
     return true;
 }
+
+#endif
 
 int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 {
@@ -154,9 +158,6 @@ int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 		for (size_t i = _tcslen(Strings::kSearching); i > 0; --i) {
 			std::Tcerr << '\b';
 		}
-		if (g_break) {
-			return EXIT_FAILURE;
-		}
 		if (ar_comp.GetFileList().size() == 0) {
 			std::Tcerr << Strings::kNoFilesFound << std::endl;
 			return EXIT_SUCCESS;
@@ -171,14 +172,14 @@ int RADYX_CDECL _tmain(int argc, _TCHAR* argv[])
 #endif
 #ifdef RADYX_RANDOM_TEST
         std::Tcerr << _T("Random file selector/tester") << std::endl;
-        for(int i = 0; i < 1000 && !g_break; ++i)
+        for(int i = 0; i < 1000; ++i)
 #endif
         {
             OutputFile out_stream;
             created_file = OpenOutputStream(archive_path, options, out_stream, avail_mem);
             Container7z::ReserveSignatureHeader(out_stream);
             uint_least64_t packed = ar_comp.Compress(unit_comp, options, out_stream);
-            if (ar_comp.GetFileList().size() != 0 && !g_break) {
+            if (ar_comp.GetFileList().size() != 0) {
                 packed += Container7z::WriteDatabase(ar_comp, unit_comp, out_stream);
                 if (!created_file) {
                     std::Tcerr << "Compressed size: " << packed << " bytes" << std::endl;

@@ -46,6 +46,7 @@ const _TCHAR Strings::kHelpString[] = _T(
 "  -ssw : compress shared files\n"
 "  -w[{path}] : assign work directory\n"
 "  -x[r[-|0]]{@listfile|!wildcard} : exclude filenames\n");
+const char Strings::kBreakSignaled[] = "Break signaled.";
 const _TCHAR Strings::kExtractionUnsupported[] = _T("This version of Radyx does not support extraction.\nUse 7-zip or a compatible program.");
 const _TCHAR Strings::kNoCommandSpecified[] = _T("No command specified");
 const _TCHAR Strings::kLcLpNoGreaterThan4[] = _T("Literal context bits (-mlc) + literal position bits (-mlp) must be no greater than 4.");
@@ -68,7 +69,7 @@ const _TCHAR Strings::kUnableConvertUtf8to16[] = _T("Unable to convert filename 
 const _TCHAR Strings::kCannotWriteArchive[] = _T("Cannot write archive file");
 const _TCHAR Strings::kArchiveFileExists[] = _T("Archive file exists. This version of Radyx does not support updating.");
 const _TCHAR Strings::kCannotCreateArchive[] = _T("Cannot create archive file");
-const _TCHAR Strings::kErrorCol_[] = _T("Error: ");
+const _TCHAR Strings::kErrorCol_[] = _T("\rError: ");
 const _TCHAR Strings::kErrorNotEnoughMem[] = _T("Error: Not enough memory. Try decreasing the dictionary size.");
 const _TCHAR Strings::kExtraCharsAfterSwitch_[] = _T("Extra characters after switch ");
 const _TCHAR Strings::kInvalidCommand_[] = _T("Invalid command ");

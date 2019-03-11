@@ -201,10 +201,20 @@ void ArchiveCompressor::PrepareFileList(const RadyxOptions& options)
     if (file_list.size() == 0)
         return;
 
+#ifdef RADYX_RANDOM_TEST
+    for (auto it = file_list.begin(); it != file_list.end(); ) {
+        FileReader reader(*it, options.share_deny_none);
+        auto old_it = it;
+        ++it;
+        if (!reader.IsValid())
+            file_list.erase(old_it);
+    }
+#endif
+
     EliminateDuplicates();
     if (options.store_full_paths) {
-        for (auto& fs : file_list) {
-            fs.root = 0;
+        for (auto& fi : file_list) {
+            fi.root = 0;
         }
     }
     else {
@@ -213,6 +223,42 @@ void ArchiveCompressor::PrepareFileList(const RadyxOptions& options)
     // Sort the file list by extension index then name
     file_list.sort(CompareFileInfo);
 }
+
+#ifdef RADYX_RANDOM_TEST
+
+template<typename T>
+T RandomLogDistribution(std::mt19937& gen, unsigned logMin, unsigned logMax)
+{
+    auto value = T(1) << std::uniform_int_distribution<T>(logMin, logMax - 1)(gen);
+    return value + std::uniform_int_distribution<T>(0, value)(gen);
+}
+
+static void SetRandomOptions(std::mt19937& gen, Lzma2Options& lzma2)
+{
+    static std::array<unsigned, 26> overlaps = { 0,1,2,2,2,2,2,3,3,3,3,3,4,4,4,5,5,6,7,8,9,10,11,12,13,14 };
+    std::uniform_int_distribution<unsigned> dist_lc(FL2_LC_MIN, FL2_LC_MAX);
+    lzma2.lc = dist_lc(gen);
+    std::uniform_int_distribution<unsigned> dist_lp(FL2_LP_MIN, FL2_LCLP_MAX - lzma2.lc);
+    lzma2.lp = dist_lp(gen);
+    lzma2.pb = dist_lc(gen);
+    lzma2.fast_length = std::uniform_int_distribution<unsigned>(FL2_FASTLENGTH_MIN, FL2_FASTLENGTH_MAX)(gen);
+    lzma2.search_depth = std::min(FL2_SEARCH_DEPTH_MIN - 4 + RandomLogDistribution<unsigned>(gen, 2, 8), unsigned(FL2_SEARCH_DEPTH_MAX));
+    lzma2.match_cycles = std::uniform_int_distribution<unsigned>(FL2_HYBRIDCYCLES_MIN, FL2_HYBRIDCYCLES_MAX)(gen);
+    lzma2.encoder_mode = Lzma2Options::Mode(std::uniform_int_distribution<int>(Lzma2Options::kFastMode, Lzma2Options::kBestMode)(gen));
+    lzma2.second_dict_size = 1U << std::uniform_int_distribution<unsigned>(FL2_CHAINLOG_MIN, FL2_CHAINLOG_MAX)(gen);
+    if(dist_lc(gen) > 1)
+        lzma2.dictionary_size = RandomLogDistribution<size_t>(gen, FL2_DICTLOG_MIN, 28);
+    else
+        lzma2.dictionary_size = size_t(1) << std::uniform_int_distribution<size_t>(FL2_DICTLOG_MIN, 28)(gen);
+    lzma2.match_buffer_log = std::uniform_int_distribution<unsigned>(FL2_BUFFER_SIZE_LOG_MIN, FL2_BUFFER_SIZE_LOG_MAX)(gen);
+    lzma2.divide_and_conquer = std::uniform_int_distribution<unsigned>(0, 1)(gen);
+    lzma2.block_overlap = overlaps[std::uniform_int_distribution<size_t>(0, overlaps.size() - 1)(gen)];
+    fprintf(stderr, "lc=%u lp=%u pb=%u fb=%u sd=%u mc=%u mode=%u dict=%u dict_2=%u buf=%u q=%u ov=%u\r\n",
+        lzma2.lc, lzma2.lp, lzma2.pb, lzma2.fast_length.Get(), lzma2.search_depth.Get(), lzma2.match_cycles.Get(), lzma2.encoder_mode.Get(),
+        (unsigned)lzma2.dictionary_size.Get(), lzma2.second_dict_size.Get(), lzma2.match_buffer_log.Get(), lzma2.divide_and_conquer.Get(), lzma2.block_overlap.Get());
+}
+
+#endif
 
 uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 	const RadyxOptions& options,
@@ -224,14 +270,17 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 #ifdef RADYX_RANDOM_TEST
     std::vector<FileInfo*> file_vec;
     file_vec.reserve(file_list.size());
-    for (auto& fs : file_list) {
-        file_vec.push_back(&fs);
-        fs.include = false;
+    for (auto& fi : file_list) {
+        file_vec.push_back(&fi);
+        fi.include = false;
     }
     LARGE_INTEGER li;
     QueryPerformanceCounter(&li);
     std::Tcerr << "Seed: " << li.LowPart << std::endl;
     std::mt19937 gen(li.LowPart);
+    Lzma2Options lzma2;
+    SetRandomOptions(gen, lzma2);
+    enc.SetOptions(lzma2);
     std::uniform_int_distribution<size_t> file_num(0, file_vec.size() - 1);
     uint_least64_t total = 0;
     for (size_t i = 0; i < (file_vec.size() << 3) && total < g_testSize; ++i) {
@@ -244,10 +293,10 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
     file_list_copy = std::move(file_list);
     file_list = std::list<FileInfo>();
     initial_total_bytes = 0;
-    for (auto& fs : file_list_copy) {
-        if (fs.include) {
-            file_list.push_back(fs);
-            initial_total_bytes += fs.size;
+    for (auto& fi : file_list_copy) {
+        if (fi.include) {
+            file_list.push_back(fi);
+            initial_total_bytes += fi.size;
         }
     }
 #endif
@@ -261,7 +310,7 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 	unsigned exe_group = GetExtensionIndex(_T("exe"));
     enc.Begin(options.bcj_filter && it->ext_index >= exe_group);
 	Progress progress(initial_total_bytes);
-	while (!g_break) {
+    for (;;) {
 		unsigned ext_index = it->ext_index;
 		if(!AddFile(*it, enc, options, progress, out_stream)) {
 			auto old_it = it;
@@ -269,7 +318,7 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 			//Delete it from the file list if not read
 			file_list.erase(old_it);
 		}
-		else {
+		else if (!g_break) {
 			// Only added to the unit if not empty
 			if (it->size != 0) {
 				unit.unpack_size += it->size;
@@ -281,9 +330,13 @@ uint_least64_t ArchiveCompressor::Compress(FastLzma2& enc,
 			}
 			++it;
 		}
-		if (g_break) {
-			break;
-		}
+        else {
+            // Break signaled
+            // Compression could be occuring asynchronously
+            enc.Cancel();
+            progress.Erase();
+            throw std::runtime_error(Strings::kBreakSignaled);
+        }
 		// Criteria for ending the solid unit and maybe starting a new one
 		if (unit.unpack_size >= options.solid_unit_size
 			|| unit.file_count >= options.solid_file_count
@@ -436,9 +489,10 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
 			std::Tcerr << file_warnings.back() << std::endl;
 			return false;
 		}
-		if (read_count == 0) {
+		if (read_count == 0)
 			break;
-		}
+        if (g_break)
+            return true;
         // Update the CRC
 		fi.crc32.Add(dst, read_count);
 		// Update file size and the unit compressor's buffer pos
@@ -449,7 +503,7 @@ bool ArchiveCompressor::AddFile(FileInfo& fi,
         did_read = true;
 	}
 	// Adjust the total bytes to add if the size was different from when it was opened
-	if (fi.size != initial_size) {
+	if (!g_break && fi.size != initial_size) {
 		progress.Adjust(fi.size - initial_size);
 	}
 	return true;

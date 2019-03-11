@@ -47,32 +47,28 @@ unsigned Progress::ShowLocked()
 		RewindLocked();
 	}
 	unsigned percent = static_cast<unsigned>(progress_bytes * 100 / (total_bytes + (total_bytes == 0)));
-	if (!g_break) {
 #ifdef _UNICODE
-		_TCHAR buf[8];
-		display_length = swprintf_s(buf, L" %u%%", percent);
-		std::wcerr << buf;
+    _TCHAR buf[8];
+    display_length = swprintf_s(buf, L" %u%%", percent);
+    std::wcerr << buf;
 #else
-		display_length = fprintf(stderr, " %u%%", percent);
+    display_length = fprintf(stderr, " %u%%", percent);
 #endif
-	}
 	return percent;
 }
 
 void Progress::RewindLocked()
 {
-	if (!g_break) {
-		std::Tcerr << _T('\r');
-		display_length = 0;
-	}
+    std::Tcerr << _T('\r');
+    display_length = 0;
 }
 
 void Progress::Update(uint_least64_t bytes_done)
 {
     progress_bytes = prev_done + bytes_done;
-	if (bytes_done >= next_update) {
+	if (progress_bytes >= next_update) {
 		std::unique_lock<std::mutex> lock(mtx);
-		if (bytes_done >= next_update) {
+		if (progress_bytes >= next_update) {
 			uint_least64_t percent = ShowLocked() + 1;
 			next_update = total_bytes * percent / 100;
 		}

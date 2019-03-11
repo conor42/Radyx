@@ -31,7 +31,8 @@ class Strings
 {
 public:
 	static const _TCHAR kHelpString[];
-	static const _TCHAR kExtractionUnsupported[];
+    static const char kBreakSignaled[];
+    static const _TCHAR kExtractionUnsupported[];
 	static const _TCHAR kNoCommandSpecified[];
 	static const _TCHAR kLcLpNoGreaterThan4[];
 	static const _TCHAR kSearching[];
