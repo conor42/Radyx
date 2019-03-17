@@ -87,7 +87,7 @@ void FastLzma2::SetOptions(Lzma2Options & lzma2)
     if (lzma2.search_depth.IsSet())
         ReportError(FL2_CStream_setParameter(fcs, FL2_p_searchDepth, lzma2.search_depth));
     if (lzma2.second_dict_size.IsSet())
-        ReportError(FL2_CStream_setParameter(fcs, FL2_p_chainLog, ValueToLog(lzma2.second_dict_size, FL2_CHAINLOG_MIN)));
+        ReportError(FL2_CStream_setParameter(fcs, FL2_p_hybridChainLog, ValueToLog(lzma2.second_dict_size, FL2_CHAINLOG_MIN)));
     if (lzma2.encoder_mode.IsSet())
         ReportError(FL2_CStream_setParameter(fcs, FL2_p_strategy, std::min(static_cast<unsigned>(lzma2.encoder_mode), 2U)));
     if (lzma2.fast_length.IsSet())

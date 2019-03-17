@@ -144,9 +144,6 @@
     <ClInclude Include="..\..\fast-lzma2\dict_buffer.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\fast-lzma2\fl2_error_private.h">
-      <Filter>fast-lzma2</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\fast-lzma2\fl2_pool.h">
       <Filter>fast-lzma2</Filter>
     </ClInclude>
@@ -237,9 +234,6 @@
       <Filter>fast-lzma2</Filter>
     </ClCompile>
     <ClCompile Include="..\..\fast-lzma2\util.c">
-      <Filter>fast-lzma2</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\fast-lzma2\fl2_error_private.c">
       <Filter>fast-lzma2</Filter>
     </ClCompile>
     <ClCompile Include="..\..\fast-lzma2\fl2_pool.c">

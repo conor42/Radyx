@@ -373,7 +373,7 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 	switch (*arg++) {
 	case 'x':
 		arg += (arg[0] == '=');
-		lzma2.compress_level = ReadSimpleNumericParam(arg, 1, 12);
+		lzma2.compress_level = ReadSimpleNumericParam(arg, 1, FL2_maxCLevel());
 		break;
 	case 's':
         if (arg[0] == 'd') {
@@ -397,7 +397,7 @@ void RadyxOptions::HandleCompressionMethod(const _TCHAR* arg)
 				multi_thread = true;
 			}
 			else {
-				thread_count = ReadSimpleNumericParam(arg, 1, FL2_MAXTHREADS);
+				thread_count = ReadSimpleNumericParam(arg, 0, FL2_MAXTHREADS);
 				multi_thread = true;
 			}
 			break;

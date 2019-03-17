@@ -40,7 +40,6 @@
     <ClInclude Include="..\..\fast-lzma2\fastpos_table.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_compress_internal.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_errors.h" />
-    <ClInclude Include="..\..\fast-lzma2\fl2_error_private.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_internal.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_pool.h" />
     <ClInclude Include="..\..\fast-lzma2\fl2_threading.h" />
@@ -78,7 +77,6 @@
     <ClCompile Include="..\..\fast-lzma2\fl2_common.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_compress.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_decompress.c" />
-    <ClCompile Include="..\..\fast-lzma2\fl2_error_private.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_pool.c" />
     <ClCompile Include="..\..\fast-lzma2\fl2_threading.c" />
     <ClCompile Include="..\..\fast-lzma2\lzma2_dec.c" />
@@ -181,7 +179,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>RADYX_RANDOM_TEST;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile />
     </ClCompile>
     <Link>

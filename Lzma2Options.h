@@ -31,45 +31,45 @@ namespace Radyx {
 
 struct Lzma2Options
 {
-	static const uint8_t kDicSizeTable[10];
-	static const unsigned kOverlapShift = 4;
+    static const uint8_t kDicSizeTable[10];
+    static const unsigned kOverlapShift = 4;
 
-	enum Mode
-	{
-		kFastMode,
-		kNormalMode,
-		kBestMode
-	};
+    enum Mode
+    {
+        kFastMode,
+        kNormalMode,
+        kBestMode
+    };
 
-	unsigned lc;
-	unsigned lp;
-	unsigned pb;
-	OptionalSetting<unsigned> fast_length;
+    unsigned lc;
+    unsigned lp;
+    unsigned pb;
+    OptionalSetting<unsigned> fast_length;
     OptionalSetting<unsigned> search_depth;
     OptionalSetting<unsigned> match_cycles;
-	OptionalSetting<Mode> encoder_mode;
-	unsigned compress_level;
-	OptionalSetting<unsigned> second_dict_size;
-	OptionalSetting<size_t> dictionary_size;
-	OptionalSetting<unsigned> match_buffer_log;
+    OptionalSetting<Mode> encoder_mode;
+    unsigned compress_level;
+    OptionalSetting<unsigned> second_dict_size;
+    OptionalSetting<size_t> dictionary_size;
+    OptionalSetting<unsigned> match_buffer_log;
     OptionalSetting<unsigned> divide_and_conquer;
     OptionalSetting<unsigned> block_overlap;
-	unsigned random_filter;
-	Lzma2Options()
-		: lc(3),
-		lp(0),
-		pb(2),
-		fast_length(48),
+    unsigned random_filter;
+    Lzma2Options()
+        : lc(3),
+        lp(0),
+        pb(2),
+        fast_length(48),
         search_depth(42),
-		match_cycles(1),
-		encoder_mode(kBestMode),
-		compress_level(8),
-		second_dict_size(512),
-		dictionary_size(UINT32_C(16) << 20),
-		match_buffer_log(4),
+        match_cycles(1),
+        encoder_mode(kBestMode),
+        compress_level(6),
+        second_dict_size(512),
+        dictionary_size(UINT32_C(16) << 20),
+        match_buffer_log(4),
         divide_and_conquer(1),
-		block_overlap(2),
-		random_filter(0) {}
+        block_overlap(2),
+        random_filter(0) {}
 };
 
 }

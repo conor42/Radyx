@@ -51,8 +51,8 @@ public:
     void IncBufferCount(OutputStream& out_stream);
     void Write(OutputStream& out_stream);
     void Cancel();
-	size_t GetUnpackSize() const { return unpack_size; }
-	size_t GetPackSize() const { return pack_size; }
+    uint_least64_t GetUnpackSize() const { return unpack_size; }
+    uint_least64_t GetPackSize() const { return pack_size; }
 	bool UsedBcj() const { return bcj.get() != nullptr; }
 	CoderInfo GetBcjCoderInfo() const { return bcj->GetCoderInfo(); }
 	size_t GetMemoryUsage() const { return FL2_estimateCStreamSize_usingCStream(fcs); }
